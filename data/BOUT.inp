@@ -1,0 +1,7 @@
+[mesh]
+nx=5
+nz=4
+ny=6
+
+[neutrals]
+type=diffusion
