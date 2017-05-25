@@ -10,6 +10,42 @@
 #pragma once
 #include <bout/solver.hxx>
 
+class Unit{
+public:
+  Unit();
+  virtual BoutReal getDensity()=0;
+  virtual BoutReal getSpeed()=0;
+  virtual BoutReal getLength()=0;
+  virtual BoutReal getTime()=0;
+  virtual BoutReal getEnergy()=0;
+  virtual BoutReal getTemperature()=0;
+};
+
+class SIUnit: public Unit{
+public:
+  BoutReal getDensity(){return 1;};
+  BoutReal getSpeed(){return 1;};
+  BoutReal getLength(){return 1;};
+  BoutReal getTime(){return 1;};
+  BoutReal getEnergy(){return 1;};
+  BoutReal getTemperature(){return 1;};
+};
+
+class BohmUnit: public Unit{
+public:
+  BoutReal getDensity(){return n;};
+  BoutReal getSpeed(){return l/t;};
+  BoutReal getLength(){return l;};
+  BoutReal getTime(){return t;};
+  BoutReal getEnergy(){return T;};
+  BoutReal getTemperature(){return T;};
+private:
+  BoutReal n;
+  BoutReal l;
+  BoutReal t;
+  BoutReal T;
+};
+
 class Neutrals{
 public:
   virtual ~Neutrals(){};
@@ -34,30 +70,30 @@ public:
   virtual const Field3D & getRecombinationRate() const;
   virtual const Field3D & getIonisationRate() const;
   
-  virtual Field3D getCXOverN() const {
-    ASSERT2(gamma_CX != nullptr);
-    if (gamma_CX_over_n == nullptr){
-      return *gamma_CX/ *n;
-    } else {
-      return * gamma_CX_over_n;
-    }
-  }
-  virtual Field3D getRecOverN() const {
-    ASSERT2(gamma_rec != nullptr);
-    if (gamma_rec_over_n == nullptr){
-      return *gamma_rec/ *n;
-    } else {
-      return * gamma_rec_over_n;
-    }
-  }
-  virtual Field3D getIonOverN() const {
-    ASSERT2(gamma_ion != nullptr);
-    if (gamma_ion_over_n == nullptr){
-      return *gamma_ion/ *n;
-    } else {
-      return * gamma_ion_over_n;
-    }
-  }
+  // virtual Field3D getCXOverN() const {
+  //   ASSERT2(gamma_CX != nullptr);
+  //   if (gamma_CX_over_n == nullptr){
+  //     return *gamma_CX/ *n;
+  //   } else {
+  //     return * gamma_CX_over_n;
+  //   }
+  // }
+  // virtual Field3D getRecOverN() const {
+  //   ASSERT2(gamma_rec != nullptr);
+  //   if (gamma_rec_over_n == nullptr){
+  //     return *gamma_rec/ *n;
+  //   } else {
+  //     return * gamma_rec_over_n;
+  //   }
+  // }
+  // virtual Field3D getIonOverN() const {
+  //   ASSERT2(gamma_ion != nullptr);
+  //   if (gamma_ion_over_n == nullptr){
+  //     return *gamma_ion/ *n;
+  //   } else {
+  //     return * gamma_ion_over_n;
+  //   }
+  // }
   
   /// Source terms (if these terms are actually sinks, the will have a
   /// negative sign)
@@ -74,13 +110,10 @@ protected:
   const Field3D * Ti; ///< Ion Temperature
   const Field3D * Ui; ///< Ion velocity
   const Field3D * Ue; ///< Electron velocity
-  Field3D * gamma_CX; ///< charge exchange rate
-  Field3D * gamma_ion; ///< ionisation rate
-  Field3D * gamma_rec; ///< recombination rate
-  /// fields before multipling with density (if applicable to the model)
-  Field3D * gamma_CX_over_n;
-  Field3D * gamma_ion_over_n;
-  Field3D * gamma_rec_over_n;
+  Field3D gamma_CX; ///< charge exchange rate
+  Field3D gamma_ion; ///< ionisation rate
+  Field3D gamma_rec; ///< recombination rate
+  Unit * unit;
   BoutReal mu;
 };
 

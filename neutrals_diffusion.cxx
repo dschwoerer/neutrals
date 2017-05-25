@@ -2,34 +2,41 @@
 
 #include "bout/surfaceiter.hxx"
 #include "bout/constants.hxx"
-/*
+#include "interpolation.hxx"
+#include "radiation.hxx"
+#include "helper.hxx"
 
-  OPTION(options, neutrals,              false) ;
-  OPTION(options, neutrals_nabla_gamma,  false) ;
-  OPTION(options, neutrals_diffusion  ,  false) ;
-  OPTION(options, neutrals_diffusion_spacial, false) ;
-  OPTION(options, mu_neutrals         ,  2e-5 ) ;   // m^2/s                                                                                                            
-  OPTION(options, neutrals_falloff    ,  4.0  ) ;   // m                                                                                                                
-  OPTION(options, neutrals_limit      ,  1e-8 ) ;   // relative                                                                                                         
-  OPTION(options, recycling_coeff     ,  0.1  ) ;
-  OPTION(options, neutrals_equi       ,  false) ;
-  if (!neutrals_equi){
-    OPTION(options, neutrals_static     ,  false) ;
-  } else {
-    output.write("\tneutrals are static, as equilibrium rates are used\n");
-    neutrals_static=true;
-  }
-  OPTION(options, neutrals_onlyion    ,  false) ;
-  OPTION(options, vort_neut_correct   ,  true ) ;
+// n_n sheath boundary condition
+static void nnsheath_yup(Field3D &n_n){
+  for (int x=0;x<mesh->LocalNx;++x)
+    for (int z=0;z<mesh->LocalNz;++z){
+      //for (int y=mesh->yend+1;y<mesh->LocalNy;++y)
+      //BoutReal uvalue=2.*n_n(x,y-1,z)-n_n(x,y-2,z);
+      int y=mesh->yend;
+      for (int dy=mesh->ystart-1;dy>=0;--dy)
+        n_n(x,y+1+dy,z)=n_n(x,y-dy,z);//uvalue<n_n(x,y-1,z)?uvalue:n_n(x,y-1,z);
+      //n_n(x,y+2,z)=n_n(x,y-1,z);
+    }
+  int myg=mesh->ystart;
+  for (int x=0;x<mesh->LocalNx;++x)
+    for (int y=mesh->ystart-1;y>=0;--y)
+      for (int z=0;z<mesh->LocalNz;++z){
+        n_n(x,y,z)=n_n(x,2*myg-1-y,z);;
+      }
+}
 
-
- */
 
 DiffusionNeutrals::DiffusionNeutrals(Solver * solver_, Options * options):
   //Neutrals(solver_,options),
-  solver(solver_){
-  options->get("evolve",doEvolve,true);
+  solver(solver_),
+  hydrogen(new UpdatedRadiatedPower)
+{
   OPTION(options, equi_rates       ,  false) ;
+  OPTION(options, recycling_falloff    ,  4.0  ) ;   // m
+  OPTION(options, lower_density_limit      ,  8e10 ) ;   // in m^-3
+  OPTION(options, recycling_fraction    ,  0.9  ) ;   // fraction of 
+  options->get("evolve",doEvolve,true);
+  OPTION(options, onlyion    ,  false) ;
   if (equi_rates && doEvolve){
     throw BoutException("DiffusionNeutrals:: cannot have equilibrium rates with evolving neutrals!");
   }
@@ -60,11 +67,33 @@ void DiffusionNeutrals::evolve(){
   }
   FieldPerp flux=sliceXZ(*Ui,mesh->yend+1)*sliceXZ(*n_stag,mesh->yend+1);
   Field3D S_recyc = recycle(flux);
-  //debug2=S_recyc;
   ddt(n_n) = gamma_rec - gamma_ion
     + S_recyc;
-  //debug3=gamma_rec - gamma_ion;
   ddt(n_n) += - n_n * n_n_sink;
+
+
+  // compute D - taken from Bens sim-cat model
+  // thermal velocity:
+  // http://www.wolframalpha.com/input/?i=sqrt%282*%20300+K+*k_B++%2F%282+u%29%29&a=*MC.K+!*k!_B-_*Unit-
+  // 1579 thermal speed of deuterium in m/s @ 300 K
+  const BoutReal thermal_speed_neut = 1579/unit->getSpeed();
+  const BoutReal a0 = PI*SQ(5.29e-11/unit->getLength()); // normalised
+  const BoutReal fac = (thermal_speed_neut *a0*(unit->getDensity()*pow(unit->getLength(),3)));
+  Field3D sigma_nn = fac * n_n;
+  D_neutrals = SQ(thermal_speed_neut)
+    / (sigma_nn + gamma_CX + gamma_ion);
+  limit_at_least_smooth(D_neutrals,1e2);
+  ddt(n_n)  += D_neutrals * Laplace(n_n);
+  //ddt(n_n)  += Grad(D_neutrals) * Grad(n_n);
+  for (int x=0;x<mesh->LocalNx;++x){
+    for (int y=0;y<mesh->LocalNy;++y){
+      if (y==mesh->ystart)
+	y=mesh->yend+1;
+      for (int z=0;z<mesh->LocalNz;++z){
+	ddt(n_n)(x,y,z)=0;
+      }
+    }
+  }
 }
 
 void DiffusionNeutrals::setDensityStag(const Field3D & n_stag_){
@@ -72,24 +101,38 @@ void DiffusionNeutrals::setDensityStag(const Field3D & n_stag_){
 }
 
 void DiffusionNeutrals::calcRates(){
-  #warning not added
-#if 0
   
-  Field3D T_in_eV=T*T_0;
-  Field3D nnn0oOmega = n_n*(n_0/Omega_i);
-  gamma_ion_over_n   = nnn0oOmega*hydrogen.ionisation_rate(T_in_eV);
-  gamma_ion          = gamma_ion_over_n*n;
-  if (!neutrals_onlyion){
-    Field3D energy=SQ(interp_to(U,CELL_CENTER))*(m_i/2*c_s*c_s/e); // in eV
-    energy+=T_in_eV;
-    //limit_at_most(energy,1e4); //10 keV
+  nnsheath_yup(n_n);
+  if (lower_density_limit > 0){
+    limit_at_least(n_n, lower_density_limit/unit->getDensity());
+    limit_at_most(n_n, 5);
+  }
+  #warning add eV etc
+  BoutReal eV=0;
+  BoutReal m_i=0;
+  Field3D Ti_in_eV=(*Ti)*(unit->getTemperature()/eV);
+  Field3D Te_in_eV;
+  if (Ti == Te){
+    Te_in_eV = Ti_in_eV;
+  } else {
+    Te_in_eV=(*Te)*(unit->getTemperature()/eV);
+  }
+  Field3D nnn0oOmega = n_n*(unit->getDensity()*unit->getTime());
+  gamma_ion_over_n   = nnn0oOmega*hydrogen.ionisation_rate(Te_in_eV);
+  gamma_ion          = gamma_ion_over_n*(*n);
+  if (!onlyion){
+    Field3D energy=SQ(interp_to(*Ui,CELL_CENTER))*(m_i/2*unit->getSpeed()*unit->getSpeed()/eV); // in eV
+    energy+=Ti_in_eV;
     gamma_CX_over_n    = hydrogen.cx_rate(energy);
     gamma_CX_over_n   *= nnn0oOmega;
-    gamma_CX           = gamma_CX_over_n*n;
-    gamma_rec_over_n   = n * hydrogen.recombination_rate(n*n_0,T_in_eV)
-      *(n_0/Omega_i); // guad cells not set
-    gamma_rec          = n * gamma_rec_over_n;
-  } else {
+    gamma_CX           = gamma_CX_over_n*(*n);
+    gamma_rec_over_n   = (*n) * hydrogen.recombination_rate((*n)*unit->getDensity(),Te_in_eV)
+      *(unit->getDensity()*unit->getTime()); // guad cells not set
+    gamma_rec          = (*n) * gamma_rec_over_n;
+  }
+  
+  #if 0
+  else {
     gamma_CX         = 0;
     gamma_CX_over_n  = 0;
     gamma_rec        = 0;
@@ -103,10 +146,11 @@ Field3D
 DiffusionNeutrals::recycle(const FieldPerp &flux){
   Field3D result;
   result.allocate();
-  //for (int i=0;i<mesh->LocalNx*mesh->LocalNy*mesh->LocalNz;++i){
+#if CHECK > 1
   for (auto i:result){
     result[i]=nan("");
   }
+#endif
   //Set a recycling source in first and last processors
   //BoutReal L;	//Parallel length coordinate
   //BoutReal TargetFluxInner,TargetFluxOuter;
@@ -122,11 +166,9 @@ DiffusionNeutrals::recycle(const FieldPerp &flux){
 	  result(i,j,k)=0;
 	}
       }
-      throw BoutException("What???\n");
       continue;	//Skip if closed flux surface
     }
     Coordinates *coord = mesh->coordinates();
-    //COORD(coord);
     if (recycling_falloff){
       comm = s.communicator();
       MPI_Comm_size(comm,&nproc);

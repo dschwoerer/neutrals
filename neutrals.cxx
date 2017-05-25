@@ -21,14 +21,14 @@ void Neutrals::setElectronVelocity(const Field3D &U_){
 }
 
 const Field3D & Neutrals::getCXRate() const{
-  return * gamma_CX;
+  return gamma_CX;
 }
 
 const Field3D & Neutrals::getRecombinationRate() const{
-  return * gamma_rec;
+  return gamma_rec;
 }
 const Field3D & Neutrals::getIonisationRate() const{
-  return * gamma_ion;
+  return gamma_ion;
 }
 
 /// this code is not staggering aware
@@ -47,14 +47,16 @@ const Field3D & Neutrals::getIonisationRate() const{
 
 Field3D Neutrals::getIonVelocitySource() const{
   ASSERT2(Ui        != nullptr);
-  Field3D tmp=getCXOverN()+getIonOverN();
+  Field3D tmp=gamma_CX+gamma_ion;
+  tmp/=*n;//getCXOverN()+getIonOverN();
   return -(*Ui)*(interp_to(tmp,Ui->getLocation()));
 }
 
   
 Field3D Neutrals::getElectronVelocitySource() const{
   ASSERT2(Ue        != nullptr);
-  return -(*Ue)*(interp_to(getIonOverN(),Ue->getLocation()));
+  Field3D tmp=gamma_ion/(*n);
+  return -(*Ue)*(interp_to(tmp,Ue->getLocation()));
 }
 
 Field3D Neutrals::getDensitySource() const{
@@ -65,8 +67,10 @@ Field3D Neutrals::getElectronTemperatureSource() const{
   ASSERT2(Ue != nullptr);
   ASSERT2(Te != nullptr);
   ASSERT2(mu > 0);
-  return getRecOverN()*interp_to(SQ(*Ue),Te->getLocation())/(3.*mu)
-    + (*Te)*(getRecOverN()-getIonOverN());
+  Field3D rec_over_n=gamma_rec/(*n);
+  Field3D ion_over_n=gamma_ion/(*n);
+  return rec_over_n*interp_to(SQ(*Ue),Te->getLocation())/(3.*mu)
+    + (*Te)*(rec_over_n-ion_over_n);
 }
 
   
