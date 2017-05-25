@@ -2,6 +2,11 @@
 #include "neutrals_diffusion.hxx"
 #include "interpolation.hxx"
 
+Neutrals::Neutrals(Solver * solver_, Mesh * mesh_):
+  n(nullptr), Te(nullptr), Ti(nullptr), Ui(nullptr), Ue(nullptr),
+  unit(nullptr), mu(1850),
+  solver(solver_),mesh(mesh_){}
+
 void Neutrals::setPlasmaDensity(const Field3D &n_){
   n=&n_;
 }
@@ -18,6 +23,10 @@ void Neutrals::setIonVelocity(const Field3D &U_){
 }
 void Neutrals::setElectronVelocity(const Field3D &U_){
   Ue=&U_;
+}
+
+void Neutrals::setUnit(const Unit &unit_){
+  unit=&unit_;
 }
 
 const Field3D & Neutrals::getCXRate() const{
@@ -87,17 +96,17 @@ Field3D Neutrals::getElectronTemperatureSource() const{
 //   virtual Field3D getElectronTemperatureSource() const;
 
 std::unique_ptr<Neutrals>
-NeutralsFactory::create(Solver * solver, Options * options){
+NeutralsFactory::create(Solver * solver, Mesh * mesh, Options * options){
   std::string type;
   OPTION(options, type, "NotSet");
   if (type == "diffusion"){
-    return std::unique_ptr<Neutrals>(new DiffusionNeutrals(solver,options));
+    return std::unique_ptr<Neutrals>(new DiffusionNeutrals(solver, mesh, options));
   } else {
     throw BoutException("unknow neutrals model '%s'",type.c_str());
   }
 }
 
 std::unique_ptr<Neutrals>
-NeutralsFactory::create(Solver * solver, std::string options){
-  return create(solver,Options::getRoot()->getSection(options));
+NeutralsFactory::create(Solver * solver, Mesh * mesh, std::string options){
+  return create(solver, mesh, Options::getRoot()->getSection(options));
 }

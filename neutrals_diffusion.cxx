@@ -10,12 +10,9 @@
 static void nnsheath_yup(Field3D &n_n){
   for (int x=0;x<mesh->LocalNx;++x)
     for (int z=0;z<mesh->LocalNz;++z){
-      //for (int y=mesh->yend+1;y<mesh->LocalNy;++y)
-      //BoutReal uvalue=2.*n_n(x,y-1,z)-n_n(x,y-2,z);
       int y=mesh->yend;
       for (int dy=mesh->ystart-1;dy>=0;--dy)
-        n_n(x,y+1+dy,z)=n_n(x,y-dy,z);//uvalue<n_n(x,y-1,z)?uvalue:n_n(x,y-1,z);
-      //n_n(x,y+2,z)=n_n(x,y-1,z);
+        n_n(x,y+1+dy,z)=n_n(x,y-dy,z);
     }
   int myg=mesh->ystart;
   for (int x=0;x<mesh->LocalNx;++x)
@@ -26,11 +23,12 @@ static void nnsheath_yup(Field3D &n_n){
 }
 
 
-DiffusionNeutrals::DiffusionNeutrals(Solver * solver_, Options * options):
-  //Neutrals(solver_,options),
-  solver(solver_),
+DiffusionNeutrals::DiffusionNeutrals(Solver * solver_, Mesh * mesh_, Options * options):
+  n_stag(nullptr),
+  Neutrals(solver_,mesh_),
   hydrogen(new UpdatedRadiatedPower)
 {
+  
   OPTION(options, equi_rates       ,  false) ;
   OPTION(options, recycling_falloff    ,  4.0  ) ;   // m
   OPTION(options, lower_density_limit      ,  8e10 ) ;   // in m^-3
@@ -41,7 +39,9 @@ DiffusionNeutrals::DiffusionNeutrals(Solver * solver_, Options * options):
     throw BoutException("DiffusionNeutrals:: cannot have equilibrium rates with evolving neutrals!");
   }
   if (doEvolve){
-    solver->add(n_n,"neutrals");
+    n_n=1e-5;
+    solver->getCurrentTimestep();
+    solver->add(n_n,"neutral_density");
   }
   n_n=1.;
 }
@@ -101,15 +101,18 @@ void DiffusionNeutrals::setDensityStag(const Field3D & n_stag_){
 }
 
 void DiffusionNeutrals::calcRates(){
-  
+  ASSERT2(unit != nullptr);
+  ASSERT2(Ti != nullptr);
+  ASSERT2(Te != nullptr);
+  ASSERT2(Ui != nullptr);
   nnsheath_yup(n_n);
   if (lower_density_limit > 0){
     limit_at_least(n_n, lower_density_limit/unit->getDensity());
     limit_at_most(n_n, 5);
   }
   #warning add eV etc
-  BoutReal eV=0;
-  BoutReal m_i=0;
+  BoutReal eV=1.6022e-19;
+  BoutReal m_i=2*1.660538921e-27;
   Field3D Ti_in_eV=(*Ti)*(unit->getTemperature()/eV);
   Field3D Te_in_eV;
   if (Ti == Te){
@@ -127,7 +130,7 @@ void DiffusionNeutrals::calcRates(){
     gamma_CX_over_n   *= nnn0oOmega;
     gamma_CX           = gamma_CX_over_n*(*n);
     gamma_rec_over_n   = (*n) * hydrogen.recombination_rate((*n)*unit->getDensity(),Te_in_eV)
-      *(unit->getDensity()*unit->getTime()); // guad cells not set
+      *(unit->getDensity()*unit->getTime()); // guard cells not set
     gamma_rec          = (*n) * gamma_rec_over_n;
   }
   

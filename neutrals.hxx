@@ -9,45 +9,49 @@
 
 #pragma once
 #include <bout/solver.hxx>
+#include <bout/constants.hxx>
 
 class Unit{
 public:
-  Unit();
-  virtual BoutReal getDensity()=0;
-  virtual BoutReal getSpeed()=0;
-  virtual BoutReal getLength()=0;
-  virtual BoutReal getTime()=0;
-  virtual BoutReal getEnergy()=0;
-  virtual BoutReal getTemperature()=0;
+  virtual BoutReal getDensity() const =0;
+  virtual BoutReal getSpeed() const =0;
+  virtual BoutReal getLength() const =0;
+  virtual BoutReal getTime() const =0;
+  virtual BoutReal getEnergy() const =0;
+  virtual BoutReal getTemperature() const =0;
 };
 
 class SIUnit: public Unit{
 public:
-  BoutReal getDensity(){return 1;};
-  BoutReal getSpeed(){return 1;};
-  BoutReal getLength(){return 1;};
-  BoutReal getTime(){return 1;};
-  BoutReal getEnergy(){return 1;};
-  BoutReal getTemperature(){return 1;};
+  BoutReal getDensity()const {return 1;};
+  BoutReal getSpeed()const {return 1;};
+  BoutReal getLength()const {return 1;};
+  BoutReal getTime()const {return 1;};
+  BoutReal getEnergy() const {return 1;};
+  BoutReal getTemperature() const {return 1;};
 };
 
 class BohmUnit: public Unit{
 public:
-  BoutReal getDensity(){return n;};
-  BoutReal getSpeed(){return l/t;};
-  BoutReal getLength(){return l;};
-  BoutReal getTime(){return t;};
-  BoutReal getEnergy(){return T;};
-  BoutReal getTemperature(){return T;};
+  BohmUnit(BoutReal B_,BoutReal T_,BoutReal n_,int m_i_):
+    B(B_),T(T_),n(n_),m_i(m_i_){};
+  BoutReal getDensity() const {return n;};
+  BoutReal getSpeed() const {return sqrt(T*SI::qe/(m_i*SI::Mp));};
+  BoutReal getLength() const {return getSpeed()/getTime();};
+  BoutReal getTime() const {return (m_i*SI::Mp)/(B*SI::qe);};
+  BoutReal getEnergy() const {return T*SI::qe;};
+  BoutReal getTemperature() const {return T*SI::qe;};
 private:
-  BoutReal n;
-  BoutReal l;
-  BoutReal t;
+  BohmUnit()=delete;
+  BoutReal B;
   BoutReal T;
+  BoutReal n;
+  BoutReal m_i;
 };
 
 class Neutrals{
 public:
+  Neutrals(Solver * solver_, Mesh * mesh_);
   virtual ~Neutrals(){};
   /// what fields are needed may depend on the neutral model used
   virtual void setPlasmaDensity(const Field3D &n);
@@ -55,6 +59,8 @@ public:
   virtual void setIonTemperature(const Field3D &Ti);
   virtual void setElectronVelocity(const Field3D &U);
   virtual void setIonVelocity(const Field3D &U);
+  // Set the unit system
+  virtual void setUnit(const Unit &unit);
   /// Update rates. If needed, this also evolves the neutrals by
   /// e.g. setting the time derivative of the needed neutral
   /// variables.
@@ -113,15 +119,17 @@ protected:
   Field3D gamma_CX; ///< charge exchange rate
   Field3D gamma_ion; ///< ionisation rate
   Field3D gamma_rec; ///< recombination rate
-  Unit * unit;
+  const Unit * unit;
   BoutReal mu;
+  Mesh * mesh;
+  Solver * solver;
 };
 
 
 class NeutralsFactory{
 public:
-  static   std::unique_ptr<Neutrals> create(Solver * solver, Options * option);
-  static   std::unique_ptr<Neutrals> create(Solver * solver, std::string option_section);
+  static   std::unique_ptr<Neutrals> create(Solver * solver, Mesh * mesh, Options * option);
+  static   std::unique_ptr<Neutrals> create(Solver * solver, Mesh * mesh, std::string option_section);
 private:
   NeutralsFactory();
 };

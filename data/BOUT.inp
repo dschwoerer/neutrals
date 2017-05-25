@@ -5,3 +5,8 @@ ny=6
 
 [neutrals]
 type=diffusion
+
+
+[neutral_density]
+function=1e-5
+scale=1

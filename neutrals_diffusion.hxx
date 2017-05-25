@@ -9,7 +9,7 @@
 
 class DiffusionNeutrals: public Neutrals{
 public:
-  DiffusionNeutrals(Solver * solver, Options * options);
+  DiffusionNeutrals(Solver * solver, Mesh * mesh, Options * options);
   /// update the rates, and also set the time derivative, assuming it
   /// is using the solver to evolve the neutrals. The EIRENE coupling
   /// might rather use monitors.
@@ -22,8 +22,6 @@ protected:
   Field3D D_neutrals;
   /// pointer to staggered density
   const Field3D * n_stag;
-  /// pointer to the solver of the calling physics model
-  Solver * solver;
   bool doEvolve; ///< are we evolving the neutrals?
   bool equi_rates; ///< are we using the steady state rates?
   bool onlyion; ///< Do we exclude CX and recombination?

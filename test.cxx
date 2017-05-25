@@ -6,9 +6,11 @@
 class MonitorExample : public PhysicsModel {
 protected:
   // Initialisation
-  int init(bool restarting) {
+  int init(bool restarting){
+    unit=new BohmUnit(.5, 40,8e18,2);
     solver->add(f, "f");
-    neut = NeutralsFactory::create(solver,Options::getRoot()->getSection("neutrals") );
+    neut = NeutralsFactory::create(solver,mesh,"neutrals");
+    neut->setUnit(*unit);
     neut->setPlasmaDensity(f);
     neut->setElectronTemperature(f);
     neut->setIonTemperature(f);
@@ -38,8 +40,9 @@ protected:
   }
   
 private:
-  Field2D f;
+  Field3D f;
   std::unique_ptr<Neutrals> neut;
+  Unit * unit;
 };
 
 // Create a default main()

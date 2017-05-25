@@ -4,3 +4,6 @@ BOUT.log*
 BOUT.settings
 *.o
 test
+BOUT.dmp*
+BOUT.rest*
+BOUT.fai*
