@@ -43,7 +43,8 @@ DiffusionNeutrals::DiffusionNeutrals(Solver * solver_, Mesh * mesh_, Options * o
     std::string density_name;
     OPTION(options,density_name,"neutral_density");
     solver->add(n_n,density_name.c_str());
-    //output.write("sdf\n");
+  } else {
+    throw BoutException("we really should get the density!");
   }
 }
 
