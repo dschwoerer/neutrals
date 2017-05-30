@@ -28,7 +28,6 @@ DiffusionNeutrals::DiffusionNeutrals(Solver * solver_, Mesh * mesh_, Options * o
   Neutrals(solver_,mesh_),
   hydrogen(new UpdatedRadiatedPower)
 {
-  
   OPTION(options, equi_rates       ,  false) ;
   OPTION(options, recycling_falloff    ,  4.0  ) ;   // m
   OPTION(options, lower_density_limit      ,  8e10 ) ;   // in m^-3
@@ -41,18 +40,37 @@ DiffusionNeutrals::DiffusionNeutrals(Solver * solver_, Mesh * mesh_, Options * o
   if (doEvolve){
     n_n=1e-5;
     solver->getCurrentTimestep();
-    solver->add(n_n,"neutral_density");
+    std::string density_name;
+    OPTION(options,density_name,"neutral_density");
+    solver->add(n_n,density_name.c_str());
+    //output.write("sdf\n");
   }
-  n_n=1.;
+}
+
+void DiffusionNeutrals::setNeutrals(const Field3D & n_n_){
+  n_n = n_n_;
+}
+
+void DiffusionNeutrals::dumpRates(Datafile & dump){
+  if (doEvolve){
+    SAVE_REPEAT(D_neutrals);
+    SAVE_REPEAT(S_recyc);
+  }
+  if (!equi_rates){
+    SAVE_REPEAT(gamma_CX);
+    SAVE_REPEAT(gamma_ion);
+    SAVE_REPEAT(gamma_rec);
+  }
 }
 
 void
 DiffusionNeutrals::update(){
   if (!equi_rates){
     this->calcRates();
-  }
-  if (doEvolve){
-    this->evolve();
+    if (doEvolve){
+      #warning COMMUNICATE!!!!
+      this->evolve();
+    }
   }
 }
 
@@ -65,8 +83,9 @@ void DiffusionNeutrals::evolve(){
       n_stag=n;
     }
   }
+  nnsheath_yup(n_n);
   FieldPerp flux=sliceXZ(*Ui,mesh->yend+1)*sliceXZ(*n_stag,mesh->yend+1);
-  Field3D S_recyc = recycle(flux);
+  S_recyc = recycle(flux);
   ddt(n_n) = gamma_rec - gamma_ion
     + S_recyc;
   ddt(n_n) += - n_n * n_n_sink;
@@ -96,7 +115,7 @@ void DiffusionNeutrals::evolve(){
   }
 }
 
-void DiffusionNeutrals::setDensityStag(const Field3D & n_stag_){
+void DiffusionNeutrals::setPlasmaDensityStag(const Field3D & n_stag_){
   n_stag=&n_stag_;
 }
 
@@ -105,11 +124,11 @@ void DiffusionNeutrals::calcRates(){
   ASSERT2(Ti != nullptr);
   ASSERT2(Te != nullptr);
   ASSERT2(Ui != nullptr);
-  nnsheath_yup(n_n);
   if (lower_density_limit > 0){
     limit_at_least(n_n, lower_density_limit/unit->getDensity());
     limit_at_most(n_n, 5);
   }
+  nnsheath_yup(n_n);
   #warning add eV etc
   BoutReal eV=1.6022e-19;
   BoutReal m_i=2*1.660538921e-27;
@@ -132,16 +151,12 @@ void DiffusionNeutrals::calcRates(){
     gamma_rec_over_n   = (*n) * hydrogen.recombination_rate((*n)*unit->getDensity(),Te_in_eV)
       *(unit->getDensity()*unit->getTime()); // guard cells not set
     gamma_rec          = (*n) * gamma_rec_over_n;
-  }
-  
-  #if 0
-  else {
+  } else {
     gamma_CX         = 0;
     gamma_CX_over_n  = 0;
     gamma_rec        = 0;
     gamma_rec_over_n = 0;
   }
-#endif
 }
 
 
@@ -173,6 +188,7 @@ DiffusionNeutrals::recycle(const FieldPerp &flux){
     }
     Coordinates *coord = mesh->coordinates();
     if (recycling_falloff){
+      BoutReal falloff= recycling_falloff/unit->getLength();
       comm = s.communicator();
       MPI_Comm_size(comm,&nproc);
       BoutReal TargetFluxOuter[mesh->LocalNz];
@@ -193,7 +209,7 @@ DiffusionNeutrals::recycle(const FieldPerp &flux){
       for(int j=2; j<mesh->GlobalNy-2; j++){
         BoutReal L = (mesh->GlobalNy-4.5-mesh->YGLOBAL(j))*coord->dy(i,j)*sqrt(coord->g_22(i,j)); //Make zero point between guard cell and first cell
         //printf("%d %g  ",mesh->YGLOBAL(j),L);
-        tmpsum+=(2/(recycling_falloff*sqrt(TWOPI)))*exp(-SQ(L)/(2*SQ(recycling_falloff)))*coord->dy(i,j);
+        tmpsum+=(2/(falloff*sqrt(TWOPI)))*exp(-SQ(L)/(2*SQ(falloff)))*coord->dy(i,j);
       }
       //printf("%d %g\n",mesh->GlobalNy,tmpsum);
       for(int j=0; j<mesh->LocalNy; j++){
@@ -202,7 +218,7 @@ DiffusionNeutrals::recycle(const FieldPerp &flux){
 	BoutReal L = (mesh->GlobalNy-4.5-mesh->YGLOBAL(j))*coord->dy(i,j)*sqrt(coord->g_22(i,j)); //Make zero point between guard cell and first cell
 	// TODO: replace abs(?) with min(?,0)?
 	//BoutReal tmp=1/falloff*exp(-L/falloff)/(1-exp(-L_para/falloff));
-        BoutReal tmp=(2/(recycling_falloff*sqrt(TWOPI)))*exp(-SQ(L)/(2*SQ(recycling_falloff)));
+        BoutReal tmp=(2/(falloff*sqrt(TWOPI)))*exp(-SQ(L)/(2*SQ(falloff)));
         tmp/=tmpsum;
         //if(tmp == 0){throw BoutException("maeh");}
 	for (int k=0;k<mesh->LocalNz;k++){

@@ -6,3 +6,12 @@ SOURCEC		= test.cxx neutrals.cxx neutrals_diffusion.cxx cross_section.cxx radiat
 TARGET		= test
 CXXFLAGS = -g
 include $(BOUT_TOP)/make.config
+
+FORCE:
+git_version.hxx: FORCE
+	@sh gen_version_header.sh
+
+neutrals.o: git_version.hxx neutrals.cxx neutrals.hxx
+
+lib:
+	@$(AR) $(ARFLAGS) $(SOUREC%.cxx=.o) libneutrals.o

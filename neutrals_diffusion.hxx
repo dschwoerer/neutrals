@@ -6,6 +6,7 @@
 #pragma once
 #include "neutrals.hxx"
 #include "cross_section.hxx"
+#include "datafile.hxx"
 
 class DiffusionNeutrals: public Neutrals{
 public:
@@ -14,12 +15,16 @@ public:
   /// is using the solver to evolve the neutrals. The EIRENE coupling
   /// might rather use monitors.
   virtual void update() override;
-  virtual void setDensityStag(const Field3D & n_stag);
+  virtual void setPlasmaDensityStag(const Field3D & n_stag);
+  virtual void dumpRates(Datafile & dump);
+  virtual void setNeutrals(const Field3D & n_n);
 protected:
   /// neutral density (that we are evolving)
   Field3D n_n;
   /// diffusion `constant`
   Field3D D_neutrals;
+  /// recycling flux
+  Field3D S_recyc;
   /// pointer to staggered density
   const Field3D * n_stag;
   bool doEvolve; ///< are we evolving the neutrals?

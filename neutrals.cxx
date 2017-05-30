@@ -1,11 +1,19 @@
 #include "neutrals.hxx"
 #include "neutrals_diffusion.hxx"
 #include "interpolation.hxx"
+#include "git_version.hxx"
 
 Neutrals::Neutrals(Solver * solver_, Mesh * mesh_):
   n(nullptr), Te(nullptr), Ti(nullptr), Ui(nullptr), Ue(nullptr),
+  phi(nullptr),
   unit(nullptr), mu(1850),
-  solver(solver_),mesh(mesh_){}
+  solver(solver_),mesh(mesh_){
+  output.write("************************************"
+               "**********************************\n") ;
+  output.write("\tNeutrals-API Version %s\n",NEUTRALS_GIT_SHA1);
+  output.write("************************************"
+               "**********************************\n") ;
+}
 
 void Neutrals::setPlasmaDensity(const Field3D &n_){
   n=&n_;
@@ -25,8 +33,18 @@ void Neutrals::setElectronVelocity(const Field3D &U_){
   Ue=&U_;
 }
 
+void Neutrals::dumpRates(Datafile & dump){
+  SAVE_REPEAT(gamma_CX);
+  SAVE_REPEAT(gamma_rec);
+  SAVE_REPEAT(gamma_ion);
+}
+
 void Neutrals::setUnit(const Unit &unit_){
   unit=&unit_;
+}
+
+void Neutrals::setPotential(const Field3D &phi_){
+  phi=&phi_;
 }
 
 const Field3D & Neutrals::getCXRate() const{
@@ -36,6 +54,7 @@ const Field3D & Neutrals::getCXRate() const{
 const Field3D & Neutrals::getRecombinationRate() const{
   return gamma_rec;
 }
+
 const Field3D & Neutrals::getIonisationRate() const{
   return gamma_ion;
 }
@@ -82,9 +101,12 @@ Field3D Neutrals::getElectronTemperatureSource() const{
     + (*Te)*(rec_over_n-ion_over_n);
 }
 
-  
+Field3D Neutrals::getVorticitySource() const{
+  ASSERT2(phi != nullptr);
+  return Delp2(*phi)*(gamma_CX+gamma_ion)
+    +Grad_perp(*phi)*Grad_perp(gamma_CX+gamma_ion);
+}
 // Field3D Neutrals::
-
 
 
 //   virtual Field3D getIonMomentumSource() const;

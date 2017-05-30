@@ -37,7 +37,7 @@ public:
     B(B_),T(T_),n(n_),m_i(m_i_){};
   BoutReal getDensity() const {return n;};
   BoutReal getSpeed() const {return sqrt(T*SI::qe/(m_i*SI::Mp));};
-  BoutReal getLength() const {return getSpeed()/getTime();};
+  BoutReal getLength() const {return getSpeed()*getTime();};
   BoutReal getTime() const {return (m_i*SI::Mp)/(B*SI::qe);};
   BoutReal getEnergy() const {return T*SI::qe;};
   BoutReal getTemperature() const {return T*SI::qe;};
@@ -59,8 +59,11 @@ public:
   virtual void setIonTemperature(const Field3D &Ti);
   virtual void setElectronVelocity(const Field3D &U);
   virtual void setIonVelocity(const Field3D &U);
+  virtual void setPotential(const Field3D &phi);
   // Set the unit system
   virtual void setUnit(const Unit &unit);
+  /// dump infos
+  virtual void dumpRates(Datafile & dump);
   /// Update rates. If needed, this also evolves the neutrals by
   /// e.g. setting the time derivative of the needed neutral
   /// variables.
@@ -109,13 +112,16 @@ public:
   virtual Field3D getElectronVelocitySource() const;
   virtual Field3D getDensitySource() const;
   //virtual Field3D getElectronEnergySource() const;
+  virtual Field3D getVorticitySource() const;
   virtual Field3D getElectronTemperatureSource() const;
+  
 protected:
   const Field3D * n; ///< density
   const Field3D * Te; ///< Electron temperature
   const Field3D * Ti; ///< Ion Temperature
   const Field3D * Ui; ///< Ion velocity
   const Field3D * Ue; ///< Electron velocity
+  const Field3D * phi; ///< Electrostatic potential
   Field3D gamma_CX; ///< charge exchange rate
   Field3D gamma_ion; ///< ionisation rate
   Field3D gamma_rec; ///< recombination rate
