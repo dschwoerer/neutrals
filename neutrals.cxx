@@ -103,8 +103,8 @@ Field3D Neutrals::getElectronTemperatureSource() const{
 
 Field3D Neutrals::getVorticitySource() const{
   ASSERT2(phi != nullptr);
-  return Delp2(*phi)*(gamma_CX+gamma_ion)
-    +Grad_perp(*phi)*Grad_perp(gamma_CX+gamma_ion);
+  return -Delp2(*phi)*(gamma_CX+gamma_ion)
+    -Grad_perp(*phi)*Grad_perp(gamma_CX+gamma_ion);
 }
 // Field3D Neutrals::
 
