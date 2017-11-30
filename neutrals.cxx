@@ -88,7 +88,7 @@ Field3D Neutrals::getElectronVelocitySource() const{
 }
 
 Field3D Neutrals::getDensitySource() const{
-  return gamma_rec - gamma_ion;
+  return gamma_ion - gamma_rec;
 }
 
 Field3D Neutrals::getElectronTemperatureSource() const{
