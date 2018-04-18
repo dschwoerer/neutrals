@@ -31,7 +31,8 @@ DiffusionNeutrals::DiffusionNeutrals(Solver * solver_, Mesh * mesh_, Options * o
   OPTION(options, equi_rates       ,  false) ;
   OPTION(options, recycling_falloff    ,  4.0  ) ;   // m
   OPTION(options, lower_density_limit      ,  8e10 ) ;   // in m^-3
-  OPTION(options, recycling_fraction    ,  0.9  ) ;   // fraction of 
+  OPTION(options, recycling_fraction    ,  0.9  ) ;   // fraction of target flux that is recycled
+  OPTION(options, loss_fraction    ,  1e-5  ) ;   // fraction of neutrals that is lost per time
   options->get("evolve",doEvolve,true);
   OPTION(options, onlyion    ,  false) ;
   if (equi_rates && doEvolve){
@@ -39,7 +40,6 @@ DiffusionNeutrals::DiffusionNeutrals(Solver * solver_, Mesh * mesh_, Options * o
   }
   if (doEvolve){
     n_n=1e-5;
-    solver->getCurrentTimestep();
     std::string density_name;
     OPTION(options,density_name,"neutral_density");
     solver->add(n_n,density_name.c_str());
@@ -69,7 +69,7 @@ DiffusionNeutrals::update(){
   if (!equi_rates){
     this->calcRates();
     if (doEvolve){
-      #warning COMMUNICATE!!!!
+      mesh->communicate(n_n);
       this->evolve();
     }
   }
@@ -89,7 +89,7 @@ void DiffusionNeutrals::evolve(){
   S_recyc = recycle(flux);
   ddt(n_n) = gamma_rec - gamma_ion
     + S_recyc;
-  ddt(n_n) += - n_n * n_n_sink;
+  ddt(n_n) += - n_n * loss_fraction;
 
 
   // compute D - taken from Bens sim-cat model
@@ -130,7 +130,6 @@ void DiffusionNeutrals::calcRates(){
     limit_at_most(n_n, 5);
   }
   nnsheath_yup(n_n);
-  #warning add eV etc
   BoutReal eV=1.6022e-19;
   BoutReal m_i=2*1.660538921e-27;
   Field3D Ti_in_eV=(*Ti)*(unit->getTemperature()/eV);

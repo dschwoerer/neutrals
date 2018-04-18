@@ -32,7 +32,7 @@ protected:
   bool onlyion; ///< Do we exclude CX and recombination?
   bool is_static; ///< are the neutrals static?
   /// fraction of neutrals that are lost per time unit
-  BoutReal n_n_sink;
+  BoutReal loss_fraction;
   /// faction of the target ion flux that is recycled
   BoutReal recycling_fraction;
   /// length over which the neutrals are recycled
