@@ -2,8 +2,14 @@
 BOUT_TOP	= ../..
 
 SOURCEH		= neutrals.hxx neutrals_diffusion.hxx
-SOURCEC		= test.cxx neutrals.cxx neutrals_diffusion.cxx cross_section.cxx radiation.cxx helper.cxx
+SOURCEC		= neutrals.cxx neutrals_diffusion.cxx cross_section.cxx radiation.cxx neutrals_parallel.cxx
+ifdef MODULE_DIR
+SUB_NAME        = neutrals
+TARGET		= sub
+else
+SOURCEC	       += test.cxx
 TARGET		= test
+endif
 CXXFLAGS = -g
 include $(BOUT_TOP)/make.config
 

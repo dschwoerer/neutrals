@@ -1,5 +1,6 @@
 #include "neutrals.hxx"
 #include "neutrals_diffusion.hxx"
+#include "neutrals_parallel.hxx"
 #include "interpolation.hxx"
 #include "git_version.hxx"
 
@@ -123,6 +124,8 @@ NeutralsFactory::create(Solver * solver, Mesh * mesh, Options * options){
   OPTION(options, type, "NotSet");
   if (type == "diffusion"){
     return std::unique_ptr<Neutrals>(new DiffusionNeutrals(solver, mesh, options));
+  } else if (type == "parallel"){
+    return std::unique_ptr<Neutrals>(new ParallelNeutrals(solver, mesh, options));
   } else {
     throw BoutException("unknow neutrals model '%s'",type.c_str());
   }

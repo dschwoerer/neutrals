@@ -5,6 +5,7 @@ ny=6
 
 [neutrals]
 type=diffusion
+type=parallel
 
 
 [neutral_density]
