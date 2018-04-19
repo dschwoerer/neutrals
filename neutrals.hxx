@@ -2,18 +2,18 @@
  *
  * Implementation of an interface to the neutral routines to be used
  * in BOUT++.
- * 
+ *
  * Should allow to switch between neutral models without changing the
  * code significantly.
  */
 
 #pragma once
-#include <bout/solver.hxx>
 #include "unit.hxx"
+#include <bout/solver.hxx>
 
-class Neutrals{
+class Neutrals {
 public:
-  Neutrals(Solver * solver_, Mesh * mesh_);
+  Neutrals(Solver *solver_, Mesh *mesh_);
   virtual ~Neutrals(){};
   /// what fields are needed may depend on the neutral model used
   virtual void setPlasmaDensity(const Field3D &n);
@@ -25,11 +25,11 @@ public:
   // Set the unit system
   virtual void setUnit(const Unit &unit);
   /// dump infos
-  virtual void dumpRates(Datafile & dump);
+  virtual void dumpRates(Datafile &dump);
   /// Update rates. If needed, this also evolves the neutrals by
   /// e.g. setting the time derivative of the needed neutral
   /// variables.
-  virtual void update()=0;
+  virtual void update() = 0;
   /// return the information about neutrals, needed by the plasma code
   /// maybe rather provide getter for momenta & velocities and
   /// densities for electrons and ions?
@@ -37,10 +37,10 @@ public:
   /// interface ...
   /// Derived classes might miss to override all routines, which is
   /// most likely needed, if any is overwritten ...
-  virtual const Field3D & getCXRate() const;
-  virtual const Field3D & getRecombinationRate() const;
-  virtual const Field3D & getIonisationRate() const;
-  
+  virtual const Field3D &getCXRate() const;
+  virtual const Field3D &getRecombinationRate() const;
+  virtual const Field3D &getIonisationRate() const;
+
   // virtual Field3D getCXOverN() const {
   //   ASSERT2(gamma_CX != nullptr);
   //   if (gamma_CX_over_n == nullptr){
@@ -65,40 +65,42 @@ public:
   //     return * gamma_ion_over_n;
   //   }
   // }
-  
+
   /// Source terms (if these terms are actually sinks, the will have a
   /// negative sign)
-  //virtual Field3D getIonMomentumSource() const;
-  //virtual Field3D getElectronMomentumSource() const;
+  // virtual Field3D getIonMomentumSource() const;
+  // virtual Field3D getElectronMomentumSource() const;
   virtual Field3D getIonVelocitySource() const;
   virtual Field3D getElectronVelocitySource() const;
   virtual Field3D getDensitySource() const;
-  //virtual Field3D getElectronEnergySource() const;
+  // virtual Field3D getElectronEnergySource() const;
   virtual Field3D getVorticitySource() const;
   virtual Field3D getElectronTemperatureSource() const;
 
   std::string type;
+
 protected:
-  const Field3D * n; ///< density
-  const Field3D * Te; ///< Electron temperature
-  const Field3D * Ti; ///< Ion Temperature
-  const Field3D * Ui; ///< Ion velocity
-  const Field3D * Ue; ///< Electron velocity
-  const Field3D * phi; ///< Electrostatic potential
-  Field3D gamma_CX; ///< charge exchange rate
-  Field3D gamma_ion; ///< ionisation rate
-  Field3D gamma_rec; ///< recombination rate
-  const Unit * unit;
+  const Field3D *n;   ///< density
+  const Field3D *Te;  ///< Electron temperature
+  const Field3D *Ti;  ///< Ion Temperature
+  const Field3D *Ui;  ///< Ion velocity
+  const Field3D *Ue;  ///< Electron velocity
+  const Field3D *phi; ///< Electrostatic potential
+  Field3D gamma_CX;   ///< charge exchange rate
+  Field3D gamma_ion;  ///< ionisation rate
+  Field3D gamma_rec;  ///< recombination rate
+  const Unit *unit;
   BoutReal mu;
-  Mesh * mesh;
-  Solver * solver;
+  Mesh *mesh;
+  Solver *solver;
 };
 
-
-class NeutralsFactory{
+class NeutralsFactory {
 public:
-  static   std::unique_ptr<Neutrals> create(Solver * solver, Mesh * mesh, Options * option);
-  static   std::unique_ptr<Neutrals> create(Solver * solver, Mesh * mesh, std::string option_section);
+  static std::unique_ptr<Neutrals> create(Solver *solver, Mesh *mesh, Options *option);
+  static std::unique_ptr<Neutrals> create(Solver *solver, Mesh *mesh,
+                                          std::string option_section);
+
 private:
   NeutralsFactory();
 };
