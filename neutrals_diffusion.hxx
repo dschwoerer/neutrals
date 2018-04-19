@@ -21,6 +21,8 @@ public:
 protected:
   /// neutral density (that we are evolving)
   Field3D n_n;
+  /// name of the density
+  std::string density_name;
   /// diffusion `constant`
   Field3D D_neutrals;
   /// recycling flux
@@ -42,7 +44,7 @@ protected:
   /// routine to update the rates - only to be called if needed
   void calcRates();
   /// routine to set the time derivative
-  void evolve();
+  virtual void evolve();
   // /// field containing the CX rates
   // Field3D gamma_CX;
   // /// field containing the recombination rates
@@ -57,4 +59,5 @@ protected:
   /// flux
   virtual Field3D recycle(const FieldPerp & flux);
   CrossSection hydrogen;
+  void nnsheath_yup();
 };

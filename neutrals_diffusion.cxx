@@ -7,7 +7,7 @@
 #include "helper.hxx"
 
 // n_n sheath boundary condition
-static void nnsheath_yup(Field3D &n_n){
+void DiffusionNeutrals::nnsheath_yup(){
   for (int x=0;x<mesh->LocalNx;++x)
     for (int z=0;z<mesh->LocalNz;++z){
       int y=mesh->yend;
@@ -23,9 +23,9 @@ static void nnsheath_yup(Field3D &n_n){
 }
 
 
-DiffusionNeutrals::DiffusionNeutrals(Solver * solver_, Mesh * mesh_, Options * options):
+DiffusionNeutrals::DiffusionNeutrals(Solver * solver, Mesh * mesh, Options * options):
   n_stag(nullptr),
-  Neutrals(solver_,mesh_),
+  Neutrals(solver,mesh),
   hydrogen(new UpdatedRadiatedPower)
 {
   OPTION(options, equi_rates       ,  false) ;
@@ -40,7 +40,6 @@ DiffusionNeutrals::DiffusionNeutrals(Solver * solver_, Mesh * mesh_, Options * o
   }
   if (doEvolve){
     n_n=1e-5;
-    std::string density_name;
     OPTION(options,density_name,"neutral_density");
     solver->add(n_n,density_name.c_str());
   } else {
@@ -84,7 +83,7 @@ void DiffusionNeutrals::evolve(){
       n_stag=n;
     }
   }
-  nnsheath_yup(n_n);
+  nnsheath_yup();
   FieldPerp flux=sliceXZ(*Ui,mesh->yend+1)*sliceXZ(*n_stag,mesh->yend+1);
   S_recyc = recycle(flux);
   ddt(n_n) = gamma_rec - gamma_ion
@@ -129,7 +128,7 @@ void DiffusionNeutrals::calcRates(){
     limit_at_least(n_n, lower_density_limit/unit->getDensity());
     limit_at_most(n_n, 5);
   }
-  nnsheath_yup(n_n);
+  nnsheath_yup();
   BoutReal eV=1.6022e-19;
   BoutReal m_i=2*1.660538921e-27;
   Field3D Ti_in_eV=(*Ti)*(unit->getTemperature()/eV);

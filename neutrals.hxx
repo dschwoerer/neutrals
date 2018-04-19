@@ -76,7 +76,8 @@ public:
   //virtual Field3D getElectronEnergySource() const;
   virtual Field3D getVorticitySource() const;
   virtual Field3D getElectronTemperatureSource() const;
-  
+
+  std::string type;
 protected:
   const Field3D * n; ///< density
   const Field3D * Te; ///< Electron temperature

@@ -4,11 +4,11 @@
 #include "interpolation.hxx"
 #include "git_version.hxx"
 
-Neutrals::Neutrals(Solver * solver_, Mesh * mesh_):
+Neutrals::Neutrals(Solver * solver, Mesh * mesh):
   n(nullptr), Te(nullptr), Ti(nullptr), Ui(nullptr), Ue(nullptr),
   phi(nullptr),
   unit(nullptr), mu(1850),
-  solver(solver_),mesh(mesh_){
+  solver(solver),mesh(mesh){
   output.write("************************************"
                "**********************************\n") ;
   output.write("\tNeutrals-API Version %s\n",NEUTRALS_GIT_SHA1);
@@ -121,14 +121,17 @@ Field3D Neutrals::getVorticitySource() const{
 std::unique_ptr<Neutrals>
 NeutralsFactory::create(Solver * solver, Mesh * mesh, Options * options){
   std::string type;
+  std::unique_ptr<Neutrals> ret;
   OPTION(options, type, "NotSet");
   if (type == "diffusion"){
-    return std::unique_ptr<Neutrals>(new DiffusionNeutrals(solver, mesh, options));
+    ret= std::unique_ptr<Neutrals>(new DiffusionNeutrals(solver, mesh, options));
   } else if (type == "parallel"){
-    return std::unique_ptr<Neutrals>(new ParallelNeutrals(solver, mesh, options));
+    ret= std::unique_ptr<Neutrals>(new ParallelNeutrals(solver, mesh, options));
   } else {
     throw BoutException("unknow neutrals model '%s'",type.c_str());
   }
+  ret->type=type;
+  return ret;
 }
 
 std::unique_ptr<Neutrals>

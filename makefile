@@ -2,7 +2,8 @@
 BOUT_TOP	= ../..
 
 SOURCEH		= neutrals.hxx neutrals_diffusion.hxx
-SOURCEC		= neutrals.cxx neutrals_diffusion.cxx cross_section.cxx radiation.cxx neutrals_parallel.cxx
+SOURCEC		= neutrals.cxx neutrals_diffusion.cxx cross_section.cxx \
+		radiation.cxx neutrals_parallel.cxx helper.cxx
 ifdef MODULE_DIR
 SUB_NAME        = neutrals
 TARGET		= sub
