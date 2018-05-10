@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+
+from boututils.run_wrapper import shell_safe,shell, launch_safe
+
+from boutdata.collect import collect
+
+shell_safe('make')
+
+launch_safe('./test', nproc=1)
+
+nd=collect('E_neutral_density',path='data',yguards=True)
+nm=collect('E_m_n',path='data',yguards=True)
+t=collect('t_array',path='data')
+t=t[-1]
+#print(t)
+
+import matplotlib.pyplot as plt
+# for t in range(100):
+#     for y in range(10):
+#         print(nd[t,0,y,0]-8e10,end=' ')
+#     print()
+#plt.semilogy(nd[:,0,:,0]-8e10)
+import boutcore as bc
+bc.init("-q -q -q")
+sol=bc.create3D('neutral_density:solution',time=t)
+#print(sol.get())
+for ext in ['','E_']:
+    nd=collect(ext+'neutral_density',path='data',yguards=True)
+    nm=collect(ext+'m_n',path='data',yguards=True)
+    plt.plot(nd[-1,0,:,0].transpose(),label='dens')
+    plt.plot(sol.get()[0,:,0].transpose(),label='dens_sol')
+    plt.plot(nm[-1,0,:,0].transpose(),label='momen')
+    plt.legend()
+    plt.show()

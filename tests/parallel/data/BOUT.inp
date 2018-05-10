@@ -1,0 +1,76 @@
+nout=4
+timestep=1e-0
+MXG=0
+MYG=2
+p0=neutrals:T_n
+[mesh]
+nx=1
+nz=1
+ny=64
+ixseps1       = -1           # Set x location of separatrix 1
+ixseps2       = -1           # Set x location of separatrix 2
+dy=.2
+
+symmetricGlobalY      = true
+
+staggerGrids=True
+
+[neutrals]
+type=parallel
+CrossSection=Testing
+RadiationType=TestingPower
+loss_fraction = 0
+lower_density_limit = 1e-10
+higher_density_limit = 4e+30
+t_n = .5
+
+[neutrals:TestingPower]
+chargeexchange = 0
+excitation = 0
+ionisation = 0
+power = 0
+recombination = .0
+
+
+[neutral_density]
+function=2
+scale=1
+bndry_yup=dirichlet(4)
+bndry_ydown=free
+evolve_bndry=false
+
+solution =  0.01*y^2*sin(t) + cos(y) + 4
+source =  0.01*y^2*cos(t) + (0.02*y*sin(t) - sin(y))*sin(y) + (0.01*y^2*sin(t) + cos(y) + 4)*cos(y)
+
+
+[m_n]
+function=0#2*pi-y
+bndry_all=free
+#boundary_ydown=free#dirichlet(0)
+#boundary_yup=free
+
+solution = (0.01*y^2*sin(t) + cos(y) + 4)*sin(y)
+source = (p0*(0.02*y*sin(t) - sin(y)) + sin(y)*cos(y))*(0.01*y^2*sin(t) + cos(y) + 4)
+
+
+[f]
+function=1
+solution=1
+source=0
+
+[g]
+function=1
+solution=1
+source=0
+
+[solver]
+type=pvode
+RTOL = 1e-14
+atol = 1e-10
+mxstep=1e5
+
+mms=true
+
+[v_n]
+solution = sin(y)
+source = p0*(0.02*y*sin(t) - sin(y)) + sin(y)*cos(y)
