@@ -452,3 +452,33 @@ BoutReal UpdatedRadiatedPower::excitation(BoutReal Te) {
 
   return fEXC;
 }
+
+
+#define gen(name)  opt->get(#name,_ ## name,1)
+
+TestingPower::TestingPower(Options * opt){
+  gen(power);
+  gen(chargeExchange);
+  gen(excitation);
+  gen(ionisation);
+  gen(recombination);
+}  
+
+#undef gen
+#define gen(name) BoutReal TestingPower::name(BoutReal Te) { \
+    return _ ## name;                                        \
+  }
+
+BoutReal TestingPower::power(BoutReal Te, BoutReal ne, BoutReal ni) {
+  return _power;
+}
+
+BoutReal TestingPower::recombination(BoutReal n, BoutReal Te) {
+  return _recombination;
+}
+
+gen(chargeExchange)
+gen(excitation)
+gen(ionisation)
+
+#undef gen

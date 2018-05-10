@@ -4,7 +4,7 @@
 
 class ParallelNeutrals : public DiffusionNeutrals {
 public:
-  ParallelNeutrals(Solver *solver, Mesh *mesh, Options *options);
+  ParallelNeutrals(Solver *solver, Mesh *mesh, CrossSection * cs, Options *options);
   void setNeutrals(const Field3D &n_n, const Field3D &v_n);
   void setNeutrals(const Field3D &n_n) override {
     throw BoutException("Please also set velocity!");
@@ -19,4 +19,5 @@ protected:
   /// neutral Temperature;
   BoutReal T_n;
   void mnsheath_yup();
+  void nnsheath_ydown();
 };

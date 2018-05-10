@@ -5,6 +5,9 @@
 #include "helper.hxx"
 #include "interpolation.hxx"
 #include "radiation.hxx"
+#include "radiation_factory.hxx"
+#include "unit.hxx"
+#include <bout/solver.hxx>
 
 // n_n sheath boundary condition
 void DiffusionNeutrals::nnsheath_yup() {
@@ -23,11 +26,12 @@ void DiffusionNeutrals::nnsheath_yup() {
       }
 }
 
-DiffusionNeutrals::DiffusionNeutrals(Solver *solver, Mesh *mesh, Options *options)
-    : n_stag(nullptr), Neutrals(solver, mesh), hydrogen(new UpdatedRadiatedPower) {
+DiffusionNeutrals::DiffusionNeutrals(Solver *solver, Mesh *mesh, CrossSection * cs, Options *options)
+  : Neutrals(solver, mesh, cs) {
   OPTION(options, equi_rates, false);
   OPTION(options, recycling_falloff, 4.0);    // m
   OPTION(options, lower_density_limit, 8e10); // in m^-3
+  OPTION(options, higher_density_limit, 4e19); // in m^-3
   OPTION(options, recycling_fraction, 0.9);   // fraction of target flux that is recycled
   OPTION(options, loss_fraction, 1e-5); // fraction of neutrals that is lost per time
   options->get("evolve", doEvolve, true);
@@ -108,10 +112,6 @@ void DiffusionNeutrals::evolve() {
   }
 }
 
-void DiffusionNeutrals::setPlasmaDensityStag(const Field3D &n_stag_) {
-  n_stag = &n_stag_;
-}
-
 void DiffusionNeutrals::calcRates() {
   ASSERT2(unit != nullptr);
   ASSERT2(Ti != nullptr);
@@ -119,30 +119,30 @@ void DiffusionNeutrals::calcRates() {
   ASSERT2(Ui != nullptr);
   if (lower_density_limit > 0) {
     limit_at_least(n_n, lower_density_limit / unit->getDensity());
-    limit_at_most(n_n, 5);
+    limit_at_most(n_n, higher_density_limit / unit->getDensity());
   }
   nnsheath_yup();
-  BoutReal eV = 1.6022e-19;
-  BoutReal m_i = 2 * 1.660538921e-27;
-  Field3D Ti_in_eV = (*Ti) * (unit->getTemperature() / eV);
+  BoutReal m_i = 2 * SI::Mp;
+  Field3D Ti_in_eV = (*Ti) * (unit->getTemperature() / SI::qe);
   Field3D Te_in_eV;
   if (Ti == Te) {
     Te_in_eV = Ti_in_eV;
   } else {
-    Te_in_eV = (*Te) * (unit->getTemperature() / eV);
+    Te_in_eV = (*Te) * (unit->getTemperature() / SI::qe);
   }
   Field3D nnn0oOmega = n_n * (unit->getDensity() * unit->getTime());
-  gamma_ion_over_n = nnn0oOmega * hydrogen.ionisation_rate(Te_in_eV);
+  gamma_ion_over_n = nnn0oOmega * hydrogen->ionisation_rate(Te_in_eV);
   gamma_ion = gamma_ion_over_n * (*n);
   if (!onlyion) {
     Field3D energy = SQ(interp_to(*Ui, CELL_CENTER)) *
-                     (m_i / 2 * unit->getSpeed() * unit->getSpeed() / eV); // in eV
+      (m_i / 2 * unit->getSpeed() * unit->getSpeed() / SI::qe); // in eV
     energy += Ti_in_eV;
-    gamma_CX_over_n = hydrogen.cx_rate(energy);
+    gamma_CX_over_n = hydrogen->cx_rate(energy);
     gamma_CX_over_n *= nnn0oOmega;
     gamma_CX = gamma_CX_over_n * (*n);
+
     gamma_rec_over_n = (*n) *
-                       hydrogen.recombination_rate((*n) * unit->getDensity(), Te_in_eV) *
+                       hydrogen->recombination_rate((*n) * unit->getDensity(), Te_in_eV) *
                        (unit->getDensity() * unit->getTime()); // guard cells not set
     gamma_rec = (*n) * gamma_rec_over_n;
   } else {

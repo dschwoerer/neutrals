@@ -1,12 +1,12 @@
-
 #ifndef __RADIATION_H__
 #define __RADIATION_H__
 
-#include <bout_types.hxx>
-#include <field3d.hxx>
-
 #include <cmath>
 #include <vector>
+
+#include <bout_types.hxx>
+#include <field3d.hxx>
+#include <options.hxx>
 
 class RadiatedPower {
 public:
@@ -112,5 +112,26 @@ protected:
   };
 };
 */
+
+class TestingPower : public RadiatedPower {
+public:
+  TestingPower(Options * opt);
+  BoutReal power(BoutReal Te, BoutReal ne, BoutReal ni) ;
+
+  BoutReal ionisation(BoutReal Te);
+
+  BoutReal recombination(BoutReal n, BoutReal Te);
+
+  BoutReal chargeExchange(BoutReal Te);
+
+  BoutReal excitation(BoutReal Te);
+private:
+  BoutReal _power;
+  BoutReal _ionisation;
+  BoutReal _recombination;
+  BoutReal _chargeExchange;
+  BoutReal _excitation;
+};
+
 
 #endif // __RADIATION_H__

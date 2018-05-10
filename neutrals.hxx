@@ -8,15 +8,25 @@
  */
 
 #pragma once
-#include "unit.hxx"
-#include <bout/solver.hxx>
+//#include <bout/solver.hxx>
+//#include "unit.hxx"
+#include <string>
+#include <bout_types.hxx>
+#include <field3d.hxx>
+class Solver;
+class Mesh;
+class Datafile;
+class Unit;
+class CrossSection;
+class Options;
 
 class Neutrals {
 public:
-  Neutrals(Solver *solver_, Mesh *mesh_);
+  Neutrals(Solver *solver, Mesh *mesh, CrossSection * cs);
   virtual ~Neutrals(){};
   /// what fields are needed may depend on the neutral model used
   virtual void setPlasmaDensity(const Field3D &n);
+  virtual void setPlasmaDensityStag(const Field3D &n_stag);
   virtual void setElectronTemperature(const Field3D &Te);
   virtual void setIonTemperature(const Field3D &Ti);
   virtual void setElectronVelocity(const Field3D &U);
@@ -77,10 +87,13 @@ public:
   virtual Field3D getVorticitySource() const;
   virtual Field3D getElectronTemperatureSource() const;
 
+  virtual const CrossSection * getCrossSection() const;
+
   std::string type;
 
 protected:
   const Field3D *n;   ///< density
+  const Field3D *n_stag; ///< density staggered
   const Field3D *Te;  ///< Electron temperature
   const Field3D *Ti;  ///< Ion Temperature
   const Field3D *Ui;  ///< Ion velocity
@@ -93,6 +106,7 @@ protected:
   BoutReal mu;
   Mesh *mesh;
   Solver *solver;
+  CrossSection * hydrogen;
 };
 
 class NeutralsFactory {
