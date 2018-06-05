@@ -1,5 +1,6 @@
 #include <bout/physicsmodel.hxx>
 
+#include "unit.hxx"
 #include "neutrals.hxx"
 #include "neutrals_diffusion.hxx"
 
@@ -36,6 +37,10 @@ protected:
   int timestepMonitor(BoutReal simtime, BoutReal dt) {
     output.write("\nTimestep monitor, time = %e, dt = %e\n", simtime, dt);
     return 0;
+  }
+public:
+  ~MonitorExample() {
+    delete unit;
   }
 
 private:
