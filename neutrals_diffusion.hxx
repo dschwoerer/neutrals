@@ -21,6 +21,10 @@ public:
 protected:
   /// neutral density (that we are evolving)
   Field3D n_n;
+  /// log of neutral density - only set if evolved
+  Field3D l_n_n;
+  ///
+  bool use_log_n;
   /// name of the density
   std::string density_name;
   /// diffusion `constant`
@@ -43,8 +47,12 @@ protected:
   BoutReal higher_density_limit;
   /// routine to update the rates - only to be called if needed
   void calcRates();
+  /// set the boundaries
+  virtual void setBC();
   /// routine to set the time derivative
   virtual void evolve();
+  /// Calculate the diffusion constant
+  void calcDiffusion();
   // /// field containing the CX rates
   // Field3D gamma_CX;
   // /// field containing the recombination rates

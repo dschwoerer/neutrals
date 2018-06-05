@@ -22,6 +22,10 @@ public:
 
   // constructor;
   CrossSection(RadiatedPower *atom);
+
+  ~CrossSection() {
+    delete atom;
+  }
 private:
   // CrossSection(const CrossSection &); // disable copying
 
@@ -52,13 +56,13 @@ class CrossSectionFactory {
 public:
   static CrossSection * create(Options * opt){
     std::string type;
-    opt->get("CrossSection",type,"Radiation");
+    opt->get("CrossSection",type,"radiation");
     if (type == "radiation") {
       return new CrossSection(RadiatedPowerFactory::create(opt));
     } else if (type == "testing") {
       return new TestCrossSection(RadiatedPowerFactory::create(opt));
     } else {
-      throw BoutException("Unknown CrossSection requested for CrossSectionFactory::create - '%s'",type);
+      throw BoutException("Unknown CrossSection requested for CrossSectionFactory::create - '%s'",type.c_str());
     }
   }
 };

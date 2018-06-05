@@ -28,7 +28,7 @@ printl("""#include "radiation_factory.hxx"
 
 RadiatedPower * RadiatedPowerFactory::create(Options * options){
   std::string name;
-  options->get("RadiationType", name , "Not Set");
+  options->get("RadiationType", name , "updatedradiatedpower");
 
   """)
 for model in models:

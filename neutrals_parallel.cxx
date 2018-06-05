@@ -14,6 +14,7 @@ ParallelNeutrals::ParallelNeutrals(Solver *solver, Mesh *mesh, CrossSection * cs
   OPTION(options, T_n, val);
   OPTION(options, momentum_name, "m_n");
   if (doEvolve) {
+    m_n.setLocation(CELL_YLOW);
     solver->add(m_n, momentum_name.c_str());
   }
 }
@@ -21,6 +22,24 @@ ParallelNeutrals::ParallelNeutrals(Solver *solver, Mesh *mesh, CrossSection * cs
 void ParallelNeutrals::setNeutrals(const Field3D &n_n_, const Field3D &m_n_) {
   n_n = n_n_;
   m_n = m_n_;
+}
+
+void ParallelNeutrals::setBC() {
+  CELL_LOC mylow = Ui->getLocation();
+  m_n.setLocation(mylow);
+  m_n.applyBoundary();
+  if (use_log_n) {
+    l_n_n.applyBoundary();
+  } else {
+    n_n.applyBoundary();
+  }
+  if (doEvolve) {
+    if (use_log_n) {
+      mesh->communicate(l_n_n,m_n);
+    } else {
+      mesh->communicate(n_n,m_n);
+    }
+  }
 }
 
 void ParallelNeutrals::evolve() {
@@ -34,44 +53,51 @@ void ParallelNeutrals::evolve() {
   }
   CELL_LOC mylow = Ui->getLocation();
   //ASSERT1(mylow==CELL_YLOW);
-  m_n.setLocation(mylow);
-  n_n.applyBoundary();
-  m_n.applyBoundary();
   //nnsheath_yup();
   //mnsheath_yup();
   //nnsheath_ydown();
-  FieldPerp flux = sliceXZ(*Ui, mesh->yend + 1) * sliceXZ(*n_stag, mesh->yend + 1);
+  //[-0.0625  0.5625  0.5625 -0.0625]
+  // [-1.,  9.,  9., -1.] / 16
+  //[ 0.3125  0.9375 -0.3125  0.0625]
+  //n_sheath=sliceXZ(*n_stag, mesh->yend + 1);
+  auto n_sheath=(-sliceXZ(*n, mesh->yend -1)+9*sliceXZ(*n, mesh->yend )+9*sliceXZ(*n, mesh->yend + 1)-sliceXZ(*n, mesh->yend + 2))/16.;
+  FieldPerp flux = sliceXZ(*Ui, mesh->yend + 1) * n_sheath;
+  //printf("\t%g\n",n_sheath(mesh->xstart,0));//(*n_stag)(mesh->xstart,mesh->yend+1,0));
   S_recyc = recycle(flux);
-  ddt(n_n) = - Div_par(m_n, CELL_CENTRE);
-  //ddt(n_n) += gamma_rec - gamma_ion + S_recyc;
-  //ddt(n_n) += -n_n * loss_fraction;
-  
-  //ddt(n_n) -= 10*D4DY4(n_n);
+  calcDiffusion();
+  if (use_log_n) {
+    n_n=exp(l_n_n);
+    ddt(l_n_n) = 1/n_n *
+      (
+       - Div_par(m_n, CELL_CENTRE)
+       + gamma_rec - gamma_ion + S_recyc
+       //+ 100*D2DY2(n_n)
+       + D_neutrals * Laplace(n_n)
+       -n_n * loss_fraction
+       
+      );
+  } else {
+    ddt(n_n) = - Div_par(m_n, CELL_CENTRE);
+    ddt(n_n) += gamma_rec - gamma_ion + S_recyc;
+    //ddt(n_n) += -n_n * loss_fraction;
+    //ddt(n_n) -= 10*D4DY4(n_n);
+  }
 
-  auto v_n = m_n / interp_to(n_n, mylow);
+  v_n = m_n / interp_to(n_n, mylow);
   auto tmp = gamma_CX + gamma_ion;
   //ddt(m_n) = 0;
-  ddt(m_n) = -Vpar_Grad_par(v_n, m_n);
-  //ddt(m_n) += -Vpar_Grad_par(m_n, v_n);
-  ddt(m_n) += - Grad_par(n_n * T_n, mylow);
+  ddt(m_n) = (
+              - Vpar_Grad_par(v_n, m_n)
+           // - Vpar_Grad_par(m_n, v_n);
+              - Grad_par(n_n * T_n, mylow)
+              + interp_to(gamma_CX,  mylow) * (*Ui - v_n)
+              + interp_to(gamma_rec, mylow) * (*Ui)
+              + interp_to(gamma_ion, mylow) * ( - v_n)
+              + 1000 * D2DY2(m_n,CELL_DEFAULT, DIFF_C2)
+             );
   //ddt(m_n) += - 10*D4DY4(m_n);
     //+((*Ui) - v_n) * interp_to(tmp, mylow);
 
-  // compute D - taken from Bens sim-cat model
-  // thermal velocity:
-  if (false) {
-    const BoutReal thermal_speed_neut =
-      sqrt(2 * T_n * unit->getTemperature() / (2 * SI::Mp));
-    const BoutReal a0 = PI * SQ(5.29e-11 / unit->getLength()); // normalised
-    const BoutReal fac =
-      (thermal_speed_neut * a0 * (unit->getDensity() * pow(unit->getLength(), 3)));
-    Field3D sigma_nn = fac * n_n;
-    D_neutrals = SQ(thermal_speed_neut) / (sigma_nn + gamma_CX + gamma_ion);
-    limit_at_least_smooth(D_neutrals, 1e2);
-    ddt(n_n) += D_neutrals * Laplace(n_n);
-  } else {
-    D_neutrals = 0;
-  }
   
   // // ddt(n_n)  += Grad(D_neutrals) * Grad(n_n);
   // for (int x = 0; x < mesh->LocalNx; ++x) {
@@ -84,6 +110,20 @@ void ParallelNeutrals::evolve() {
   //   }
   // }
 }
+
+Field3D ParallelNeutrals::getIonVelocitySource() const {
+  ASSERT2(Ui != nullptr);
+  Field3D tmp = gamma_CX + gamma_ion;
+  tmp /= *n; // getCXOverN()+getIonOverN();
+  return (v_n - *Ui) * (interp_to(tmp, Ui->getLocation()));
+}
+
+Field3D ParallelNeutrals::getElectronVelocitySource() const {
+  ASSERT2(Ue != nullptr);
+  Field3D tmp = gamma_ion / (*n);
+  return (v_n - *Ue) * (interp_to(tmp, Ue->getLocation()));
+}
+
 
 void ParallelNeutrals::mnsheath_yup() {
   for (int x = 0; x < mesh->LocalNx; ++x) {

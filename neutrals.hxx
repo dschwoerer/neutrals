@@ -23,7 +23,6 @@ class Options;
 class Neutrals {
 public:
   Neutrals(Solver *solver, Mesh *mesh, CrossSection * cs);
-  virtual ~Neutrals(){};
   /// what fields are needed may depend on the neutral model used
   virtual void setPlasmaDensity(const Field3D &n);
   virtual void setPlasmaDensityStag(const Field3D &n_stag);
@@ -36,6 +35,8 @@ public:
   virtual void setUnit(const Unit &unit);
   /// dump infos
   virtual void dumpRates(Datafile &dump);
+  /// dump more infos
+  virtual void dumpMore(Datafile & dump);
   /// Update rates. If needed, this also evolves the neutrals by
   /// e.g. setting the time derivative of the needed neutral
   /// variables.
@@ -91,7 +92,10 @@ public:
 
   std::string type;
 
+  virtual ~Neutrals();
 protected:
+  void updateMore();
+  bool dump_more;
   const Field3D *n;   ///< density
   const Field3D *n_stag; ///< density staggered
   const Field3D *Te;  ///< Electron temperature
@@ -102,6 +106,7 @@ protected:
   Field3D gamma_CX;   ///< charge exchange rate
   Field3D gamma_ion;  ///< ionisation rate
   Field3D gamma_rec;  ///< recombination rate
+  Field3D * ionVelocitySource, * densitySource, * electronTemperatureSource;
   const Unit *unit;
   BoutReal mu;
   Mesh *mesh;

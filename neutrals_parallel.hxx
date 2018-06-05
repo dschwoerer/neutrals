@@ -10,14 +10,18 @@ public:
     throw BoutException("Please also set velocity!");
   }
   void evolve() override;
+  virtual Field3D getIonVelocitySource() const override;
+  virtual Field3D getElectronVelocitySource() const override;
 
 protected:
   /// parallel neutral momentum (that we are evolving)
   Field3D m_n;
+  Field3D v_n;
   /// name of the momentum
   std::string momentum_name;
   /// neutral Temperature;
   BoutReal T_n;
   void mnsheath_yup();
   void nnsheath_ydown();
+  virtual void setBC() override;
 };

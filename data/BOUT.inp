@@ -4,9 +4,10 @@ nz=4
 ny=6
 
 [neutrals]
-type=diffusion
+#type=diffusion
 type=parallel
-
+# CrossSection = Radiation
+# RadiationType = UpdatedRadiatedPower
 
 [neutral_density]
 function=1e-5

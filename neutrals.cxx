@@ -4,10 +4,12 @@
 #include "cross_section.hxx"
 #include "neutrals_diffusion.hxx"
 #include "neutrals_parallel.hxx"
+#include "neutrals_none.hxx"
+
 #include <difops.hxx>
 
 Neutrals::Neutrals(Solver *solver, Mesh *mesh, CrossSection *cs)
-  : n(nullptr), n_stag(nullptr), Te(nullptr), Ti(nullptr), Ui(nullptr), Ue(nullptr), phi(nullptr),
+  : dump_more(false), n(nullptr), n_stag(nullptr), Te(nullptr), Ti(nullptr), Ui(nullptr), Ue(nullptr), phi(nullptr),
     unit(nullptr), mu(1850), solver(solver), mesh(mesh), hydrogen(cs) {
   output.write("************************************"
                "**********************************\n");
@@ -15,6 +17,10 @@ Neutrals::Neutrals(Solver *solver, Mesh *mesh, CrossSection *cs)
   output.write("************************************"
                "**********************************\n");
 }
+
+Neutrals::~Neutrals() {
+  delete hydrogen;
+};
 
 void Neutrals::setPlasmaDensity(const Field3D &n_) { n = &n_; }
 void Neutrals::setElectronTemperature(const Field3D &Te_) { Te = &Te_; }
@@ -37,6 +43,26 @@ void Neutrals::dumpRates(Datafile &dump) {
   SAVE_REPEAT(gamma_rec);
   SAVE_REPEAT(gamma_ion);
 }
+
+void Neutrals::dumpMore(Datafile &dump) {
+  dumpRates(dump);
+  dump_more = true;
+  ionVelocitySource = new Field3D;
+  densitySource = new Field3D();;
+  electronTemperatureSource = new Field3D;
+  dump.add(*ionVelocitySource,"ionVelocitySource",true);
+  dump.add(*densitySource,"densitySource",true);
+  dump.add(*electronTemperatureSource,"electronTemperatureSource",true);
+}
+
+void Neutrals::updateMore() {
+  if (dump_more) {
+    *ionVelocitySource = getIonVelocitySource();
+    *densitySource = getDensitySource();
+    *electronTemperatureSource = getElectronTemperatureSource();
+  }
+}
+
 
 void Neutrals::setUnit(const Unit &unit_) { unit = &unit_; }
 
@@ -112,7 +138,10 @@ std::unique_ptr<Neutrals> NeutralsFactory::create(Solver *solver, Mesh *mesh,
     ret = std::unique_ptr<Neutrals>(new DiffusionNeutrals(solver, mesh, cs, options));
   } else if (type == "parallel") {
     ret = std::unique_ptr<Neutrals>(new ParallelNeutrals(solver, mesh, cs, options));
+  } else if (type == "none") {
+    ret = std::unique_ptr<Neutrals>(new NoNeutrals(solver, mesh,cs));
   } else {
+    delete cs;
     throw BoutException("unknow neutrals model '%s'", type.c_str());
   }
   ret->type = type;

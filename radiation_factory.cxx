@@ -4,7 +4,7 @@
 
 RadiatedPower * RadiatedPowerFactory::create(Options * options){
   std::string name;
-  options->get("RadiationType", name , "Not Set");
+  options->get("RadiationType", name , "updatedradiatedpower");
 
   if (name == "hydrogenradiatedpower") {
     return new HydrogenRadiatedPower();

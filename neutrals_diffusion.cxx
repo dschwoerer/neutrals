@@ -36,20 +36,31 @@ DiffusionNeutrals::DiffusionNeutrals(Solver *solver, Mesh *mesh, CrossSection * 
   OPTION(options, loss_fraction, 1e-5); // fraction of neutrals that is lost per time
   options->get("evolve", doEvolve, true);
   OPTION(options, onlyion, false);
+  OPTION(options, use_log_n, false);
   if (equi_rates && doEvolve) {
     throw BoutException(
         "DiffusionNeutrals:: cannot have equilibrium rates with evolving neutrals!");
   }
   if (doEvolve) {
-    n_n = 1e-5;
+    n_n = 1e-4;
     OPTION(options, density_name, "neutral_density");
-    solver->add(n_n, density_name.c_str());
+    if (use_log_n) {
+      l_n_n=log(n_n);
+      solver->add(l_n_n, density_name.c_str());
+    } else {
+      solver->add(n_n, density_name.c_str());
+    }
   } else {
     throw BoutException("we really should get the density!");
   }
 }
 
-void DiffusionNeutrals::setNeutrals(const Field3D &n_n_) { n_n = n_n_; }
+void DiffusionNeutrals::setNeutrals(const Field3D &n_n_) {
+  n_n = n_n_;
+  if (use_log_n) {
+    l_n_n = log(n_n);
+  }
+}
 
 void DiffusionNeutrals::dumpRates(Datafile &dump) {
   if (doEvolve) {
@@ -65,15 +76,26 @@ void DiffusionNeutrals::dumpRates(Datafile &dump) {
 
 void DiffusionNeutrals::update() {
   if (!equi_rates) {
+    this->setBC();
     this->calcRates();
     if (doEvolve) {
-      mesh->communicate(n_n);
       this->evolve();
     }
+  }
+  updateMore();
+}
+
+void DiffusionNeutrals::setBC() {
+  nnsheath_yup();
+  if (doEvolve) {
+    mesh->communicate(n_n);
   }
 }
 
 void DiffusionNeutrals::evolve() {
+  if (use_log_n) {
+    throw BoutException("Not implemented: Log n for diffusive");
+  }
   if (n_stag == nullptr) {
     if (n->getLocation() != Ui->getLocation()) {
       throw BoutException("DiffusionNeutrals:: density and velocity at different "
@@ -88,16 +110,7 @@ void DiffusionNeutrals::evolve() {
   ddt(n_n) = gamma_rec - gamma_ion + S_recyc;
   ddt(n_n) += -n_n * loss_fraction;
 
-  // compute D - taken from Bens sim-cat model
-  // thermal velocity:
-  // http://www.wolframalpha.com/input/?i=sqrt%282*%20300+K+*k_B++%2F%282+u%29%29&a=*MC.K+!*k!_B-_*Unit-
-  // 1579 thermal speed of deuterium in m/s @ 300 K
-  const BoutReal thermal_speed_neut = 1579 / unit->getSpeed();
-  const BoutReal a0 = PI * SQ(5.29e-11 / unit->getLength()); // normalised
-  const BoutReal fac =
-      (thermal_speed_neut * a0 * (unit->getDensity() * pow(unit->getLength(), 3)));
-  Field3D sigma_nn = fac * n_n;
-  D_neutrals = SQ(thermal_speed_neut) / (sigma_nn + gamma_CX + gamma_ion);
+  calcDiffusion();
   limit_at_least_smooth(D_neutrals, 1e2);
   ddt(n_n) += D_neutrals * Laplace(n_n);
   // ddt(n_n)  += Grad(D_neutrals) * Grad(n_n);
@@ -112,6 +125,18 @@ void DiffusionNeutrals::evolve() {
   }
 }
 
+void DiffusionNeutrals::calcDiffusion() {
+  // compute D - taken from Bens sim-cat model
+  // thermal velocity:
+  // http://www.wolframalpha.com/input/?i=sqrt%282*%20300+K+*k_B++%2F%282+u%29%29&a=*MC.K+!*k!_B-_*Unit-
+  // 1579 thermal speed of deuterium in m/s @ 300 K
+  const BoutReal thermal_speed_neut = 1579 / unit->getSpeed();
+  const BoutReal a0 = PI * SQ(5.29e-11 / unit->getLength()); // normalised
+  const BoutReal fac =
+      (thermal_speed_neut * a0 * (unit->getDensity() * pow(unit->getLength(), 3)));
+  Field3D sigma_nn = fac * n_n;
+  D_neutrals = SQ(thermal_speed_neut) / (sigma_nn + gamma_CX + gamma_ion);
+}
 void DiffusionNeutrals::calcRates() {
   ASSERT2(unit != nullptr);
   ASSERT2(Ti != nullptr);
@@ -121,7 +146,6 @@ void DiffusionNeutrals::calcRates() {
     limit_at_least(n_n, lower_density_limit / unit->getDensity());
     limit_at_most(n_n, higher_density_limit / unit->getDensity());
   }
-  nnsheath_yup();
   BoutReal m_i = 2 * SI::Mp;
   Field3D Ti_in_eV = (*Ti) * (unit->getTemperature() / SI::qe);
   Field3D Te_in_eV;
