@@ -34,6 +34,9 @@ void Neutrals::setPlasmaDensityStag(const Field3D &n_stag_) {
   n_stag = &n_stag_;
 }
 
+void Neutrals::scaleSource(BoutReal fac) {
+  ;
+}
 const CrossSection * Neutrals::getCrossSection() const {
   return hydrogen;
 }

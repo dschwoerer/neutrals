@@ -14,7 +14,7 @@ ParallelNeutrals::ParallelNeutrals(Solver *solver, Mesh *mesh, CrossSection * cs
   OPTION(options, T_n, val);
   OPTION(options, momentum_name, "m_n");
   if (doEvolve) {
-    m_n.setLocation(CELL_YLOW);
+    //m_n.setLocation(CELL_YLOW);
     solver->add(m_n, momentum_name.c_str());
   }
 }
@@ -67,20 +67,18 @@ void ParallelNeutrals::evolve() {
   calcDiffusion();
   if (use_log_n) {
     n_n=exp(l_n_n);
-    ddt(l_n_n) = 1/n_n *
-      (
-       - Div_par(m_n, CELL_CENTRE)
-       + gamma_rec - gamma_ion + S_recyc
-       //+ 100*D2DY2(n_n)
-       + D_neutrals * Laplace(n_n)
-       -n_n * loss_fraction
-       
-      );
-  } else {
-    ddt(n_n) = - Div_par(m_n, CELL_CENTRE);
-    ddt(n_n) += gamma_rec - gamma_ion + S_recyc;
-    //ddt(n_n) += -n_n * loss_fraction;
-    //ddt(n_n) -= 10*D4DY4(n_n);
+  }
+  // checkData(n_n,RGN_ALL);
+  ddt(n_n) = (
+              - Div_par(m_n, CELL_CENTRE)
+              + gamma_rec - gamma_ion + S_recyc
+              //+ 100*D2DY2(n_n)
+              + D_neutrals * Laplace(n_n)
+              -n_n * loss_fraction
+              + S_extra
+              );
+  if (use_log_n) {
+    ddt(l_n_n) = ddt(n_n)/n_n;
   }
 
   v_n = m_n / interp_to(n_n, mylow);

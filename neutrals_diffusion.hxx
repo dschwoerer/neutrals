@@ -17,7 +17,7 @@ public:
   virtual void update() override;
   virtual void dumpRates(Datafile &dump);
   virtual void setNeutrals(const Field3D &n_n);
-
+  virtual void scaleSource(const BoutReal) override;
 protected:
   /// neutral density (that we are evolving)
   Field3D n_n;
@@ -63,6 +63,7 @@ protected:
   Field3D gamma_CX_over_n;
   Field3D gamma_ion_over_n;
   Field3D gamma_rec_over_n;
+  Field3D S0_extra, S_extra;
   /// function returning the recycling profile, for a given target
   /// flux
   virtual Field3D recycle(const FieldPerp &flux);

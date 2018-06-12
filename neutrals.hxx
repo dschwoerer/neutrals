@@ -33,6 +33,7 @@ public:
   virtual void setPotential(const Field3D &phi);
   // Set the unit system
   virtual void setUnit(const Unit &unit);
+  virtual void scaleSource(BoutReal fac);
   /// dump infos
   virtual void dumpRates(Datafile &dump);
   /// dump more infos

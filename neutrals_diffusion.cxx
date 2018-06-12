@@ -8,6 +8,7 @@
 #include "radiation_factory.hxx"
 #include "unit.hxx"
 #include <bout/solver.hxx>
+#include "field_factory.hxx"
 
 // n_n sheath boundary condition
 void DiffusionNeutrals::nnsheath_yup() {
@@ -37,6 +38,19 @@ DiffusionNeutrals::DiffusionNeutrals(Solver *solver, Mesh *mesh, CrossSection * 
   options->get("evolve", doEvolve, true);
   OPTION(options, onlyion, false);
   OPTION(options, use_log_n, false);
+  auto extra = options->getSection("density_source");
+  
+  if (!extra->isSet("function")){
+    S_extra=0;
+  } else {
+    std::string function;
+    OPTION(extra,function,"0");
+    output.write("\tFound extra functions: %s\n",function.c_str());
+    S_extra = FieldFactory::get()->create3D("function",extra,mesh, CELL_CENTRE,0);
+    output.write("\tFunction is in the range [%e,%e]\n",min(S_extra,true),max(S_extra,true));
+  }
+  S0_extra=S_extra;
+
   if (equi_rates && doEvolve) {
     throw BoutException(
         "DiffusionNeutrals:: cannot have equilibrium rates with evolving neutrals!");
@@ -53,6 +67,10 @@ DiffusionNeutrals::DiffusionNeutrals(Solver *solver, Mesh *mesh, CrossSection * 
   } else {
     throw BoutException("we really should get the density!");
   }
+}
+
+void DiffusionNeutrals::scaleSource(BoutReal fac) {
+  S_extra = S0_extra*fac;
 }
 
 void DiffusionNeutrals::setNeutrals(const Field3D &n_n_) {
@@ -93,9 +111,6 @@ void DiffusionNeutrals::setBC() {
 }
 
 void DiffusionNeutrals::evolve() {
-  if (use_log_n) {
-    throw BoutException("Not implemented: Log n for diffusive");
-  }
   if (n_stag == nullptr) {
     if (n->getLocation() != Ui->getLocation()) {
       throw BoutException("DiffusionNeutrals:: density and velocity at different "
@@ -104,15 +119,23 @@ void DiffusionNeutrals::evolve() {
       n_stag = n;
     }
   }
-  nnsheath_yup();
+  if (use_log_n) {
+    n_n =  exp(l_n_n);
+  }
   FieldPerp flux = sliceXZ(*Ui, mesh->yend + 1) * sliceXZ(*n_stag, mesh->yend + 1);
   S_recyc = recycle(flux);
-  ddt(n_n) = gamma_rec - gamma_ion + S_recyc;
-  ddt(n_n) += -n_n * loss_fraction;
-
   calcDiffusion();
   limit_at_least_smooth(D_neutrals, 1e2);
-  ddt(n_n) += D_neutrals * Laplace(n_n);
+  ddt(n_n) = (
+              + gamma_rec - gamma_ion + S_recyc
+              - n_n * loss_fraction
+              + D_neutrals * Laplace(n_n)
+              + S_extra
+              );
+  if (use_log_n) {
+    ddt(l_n_n) = 1/n_n * ddt(n_n);
+  }
+
   // ddt(n_n)  += Grad(D_neutrals) * Grad(n_n);
   for (int x = 0; x < mesh->LocalNx; ++x) {
     for (int y = 0; y < mesh->LocalNy; ++y) {

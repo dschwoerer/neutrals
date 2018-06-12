@@ -9,5 +9,7 @@ public:
     gamma_ion=0;
   };
   void update() override{};
+  void Neutrals::dumpRates(Datafile &dump) override {};
+  void Neutrals::dumpMore(Datafile &dump) override {};
 
 };
