@@ -2,6 +2,7 @@
 nx=5
 nz=4
 ny=6
+staggerGrids=True
 
 [neutrals]
 #type=diffusion

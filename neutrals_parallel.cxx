@@ -8,6 +8,7 @@
 
 ParallelNeutrals::ParallelNeutrals(Solver *solver, Mesh *mesh, CrossSection * cs, Options *options)
   : DiffusionNeutrals(solver, mesh, cs, options) {
+
   OPTION(options, momentum_name, "m_n");
   if (doEvolve) {
     //m_n.setLocation(CELL_YLOW);
@@ -88,6 +89,7 @@ void ParallelNeutrals::evolve() {
               + interp_to(gamma_rec, mylow) * (*Ui)
               + interp_to(gamma_ion, mylow) * ( - v_n)
               + 1000 * D2DY2(m_n,CELL_DEFAULT, DIFF_C2)
+              - interp_to(S_recyc, mylow) * v_thermal
              );
   //ddt(m_n) += - 10*D4DY4(m_n);
     //+((*Ui) - v_n) * interp_to(tmp, mylow);
