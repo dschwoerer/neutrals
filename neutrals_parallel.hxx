@@ -19,8 +19,6 @@ protected:
   Field3D v_n;
   /// name of the momentum
   std::string momentum_name;
-  /// neutral Temperature;
-  BoutReal T_n;
   void mnsheath_yup();
   void nnsheath_ydown();
   virtual void setBC() override;

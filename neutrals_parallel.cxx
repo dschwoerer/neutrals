@@ -8,10 +8,6 @@
 
 ParallelNeutrals::ParallelNeutrals(Solver *solver, Mesh *mesh, CrossSection * cs, Options *options)
   : DiffusionNeutrals(solver, mesh, cs, options) {
-  // 300 K in units of 40eV
-  BoutReal val = 300 * SI::kb / 40 / SI::qe;
-  //printf("%g\n", val);
-  OPTION(options, T_n, val);
   OPTION(options, momentum_name, "m_n");
   if (doEvolve) {
     //m_n.setLocation(CELL_YLOW);

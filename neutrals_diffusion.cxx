@@ -28,7 +28,7 @@ void DiffusionNeutrals::nnsheath_yup() {
 }
 
 DiffusionNeutrals::DiffusionNeutrals(Solver *solver, Mesh *mesh, CrossSection * cs, Options *options)
-  : Neutrals(solver, mesh, cs) {
+  : Neutrals(solver, mesh, cs, options) ,T_n(nan("")), v_thermal(nan("")) {
   OPTION(options, equi_rates, false);
   OPTION(options, recycling_falloff, 4.0);    // m
   OPTION(options, lower_density_limit, 8e10); // in m^-3
@@ -67,6 +67,34 @@ DiffusionNeutrals::DiffusionNeutrals(Solver *solver, Mesh *mesh, CrossSection * 
   } else {
     throw BoutException("we really should get the density!");
   }
+}
+
+void DiffusionNeutrals::init() {
+    // 300 K in units of 40eV
+  std::string temperature_unit;
+  OPTION(options,temperature_unit,"kb");
+  BoutReal t_unit;
+  if (temperature_unit == "kb" ||
+      temperature_unit == "k" ) {
+    t_unit = SI::kb;
+  } else if (temperature_unit == "ev" ) {
+    t_unit = SI::qe;
+  } else if (temperature_unit == "default" ) {
+    t_unit = 1;
+  } else {
+    throw BoutException("Unknown unit - %s",temperature_unit.c_str());
+  }
+  // 300 K in default unit
+  BoutReal val = 300 *SI::kb / t_unit; // /( SI::kb / 40 / SI::qe);
+  //printf("%g\n", val);
+  OPTION(options, T_n, val);
+  T_n /= unit->getTemperature() / t_unit;
+  //T_n /= t_unit;
+  v_thermal = sqrt(2* T_n * unit->getTemperature() /(SI::M_Deuterium)) / unit->getSpeed();
+  output_info.write("\tNeutrals temperature: %.10e eV\n",T_n*unit->getTemperature()/SI::qe);
+  output_info.write("\tNeutrals temperature: %.10e kB\n",T_n*unit->getTemperature()/SI::kb);
+  output_info.write("\tNeutrals thermal velocity: %.10e\n",v_thermal);
+  output_info.write("\tNeutrals thermal velocity: %.10e m/s\n",v_thermal*unit->getSpeed());
 }
 
 void DiffusionNeutrals::scaleSource(BoutReal fac) {
@@ -153,13 +181,14 @@ void DiffusionNeutrals::calcDiffusion() {
   // thermal velocity:
   // http://www.wolframalpha.com/input/?i=sqrt%282*%20300+K+*k_B++%2F%282+u%29%29&a=*MC.K+!*k!_B-_*Unit-
   // 1579 thermal speed of deuterium in m/s @ 300 K
-  const BoutReal thermal_speed_neut = 1579 / unit->getSpeed();
+  //sqrt(2 * 300 * SI::kb / 2 / SI::u)
   const BoutReal a0 = PI * SQ(5.29e-11 / unit->getLength()); // normalised
   const BoutReal fac =
-      (thermal_speed_neut * a0 * (unit->getDensity() * pow(unit->getLength(), 3)));
+      (v_thermal * a0 * (unit->getDensity() * pow(unit->getLength(), 3)));
   Field3D sigma_nn = fac * n_n;
-  D_neutrals = SQ(thermal_speed_neut) / (sigma_nn + gamma_CX + gamma_ion);
+  D_neutrals = SQ(v_thermal) / (sigma_nn + gamma_CX + gamma_ion);
 }
+
 void DiffusionNeutrals::calcRates() {
   ASSERT2(unit != nullptr);
   ASSERT2(Ti != nullptr);

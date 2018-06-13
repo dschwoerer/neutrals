@@ -8,9 +8,9 @@
 
 #include <difops.hxx>
 
-Neutrals::Neutrals(Solver *solver, Mesh *mesh, CrossSection *cs)
+Neutrals::Neutrals(Solver *solver, Mesh *mesh, CrossSection *cs, Options * options)
   : dump_more(false), n(nullptr), n_stag(nullptr), Te(nullptr), Ti(nullptr), Ui(nullptr), Ue(nullptr), phi(nullptr),
-    unit(nullptr), mu(1850), solver(solver), mesh(mesh), hydrogen(cs) {
+    unit(nullptr), mu(1850), solver(solver), mesh(mesh), hydrogen(cs), options(options) {
   output.write("************************************"
                "**********************************\n");
   output.write("\tNeutrals-API Version %s\n", NEUTRALS_GIT_SHA1);
@@ -142,7 +142,7 @@ std::unique_ptr<Neutrals> NeutralsFactory::create(Solver *solver, Mesh *mesh,
   } else if (type == "parallel") {
     ret = std::unique_ptr<Neutrals>(new ParallelNeutrals(solver, mesh, cs, options));
   } else if (type == "none") {
-    ret = std::unique_ptr<Neutrals>(new NoNeutrals(solver, mesh,cs));
+    ret = std::unique_ptr<Neutrals>(new NoNeutrals(solver, mesh,cs, options));
   } else {
     delete cs;
     throw BoutException("unknow neutrals model '%s'", type.c_str());

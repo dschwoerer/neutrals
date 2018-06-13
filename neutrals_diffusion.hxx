@@ -18,6 +18,7 @@ public:
   virtual void dumpRates(Datafile &dump);
   virtual void setNeutrals(const Field3D &n_n);
   virtual void scaleSource(const BoutReal) override;
+  virtual void init() override;
 protected:
   /// neutral density (that we are evolving)
   Field3D n_n;
@@ -68,4 +69,8 @@ protected:
   /// flux
   virtual Field3D recycle(const FieldPerp &flux);
   void nnsheath_yup();
+  /// neutral Temperature;
+  BoutReal T_n;
+  /// thermal velocity;
+  BoutReal v_thermal;
 };

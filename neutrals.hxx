@@ -22,7 +22,7 @@ class Options;
 
 class Neutrals {
 public:
-  Neutrals(Solver *solver, Mesh *mesh, CrossSection * cs);
+  Neutrals(Solver *solver, Mesh *mesh, CrossSection * cs, Options * options);
   /// what fields are needed may depend on the neutral model used
   virtual void setPlasmaDensity(const Field3D &n);
   virtual void setPlasmaDensityStag(const Field3D &n_stag);
@@ -31,9 +31,12 @@ public:
   virtual void setElectronVelocity(const Field3D &U);
   virtual void setIonVelocity(const Field3D &U);
   virtual void setPotential(const Field3D &phi);
-  // Set the unit system
+  /// Set the unit system
   virtual void setUnit(const Unit &unit);
+  /// scale the extra neutral sources
   virtual void scaleSource(BoutReal fac);
+  /// Init everything
+  virtual void init() {};
   /// dump infos
   virtual void dumpRates(Datafile &dump);
   /// dump more infos
@@ -113,6 +116,7 @@ protected:
   Mesh *mesh;
   Solver *solver;
   CrossSection * hydrogen;
+  Options * options;
 };
 
 class NeutralsFactory {
