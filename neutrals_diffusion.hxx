@@ -19,6 +19,7 @@ public:
   virtual void setNeutrals(const Field3D &n_n);
   virtual void scaleSource(const BoutReal) override;
   virtual void init() override;
+  virtual Field3D getElectronTemperatureSource() const override;
 protected:
   /// neutral density (that we are evolving)
   Field3D n_n;

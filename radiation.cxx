@@ -257,14 +257,6 @@ BoutReal UpdatedRadiatedPower::recombination(BoutReal n, BoutReal T) {
 
   if (n < 1e3) // Log(n) used, so prevent NaNs
     return 0.0;
-  if (n > 1e21) {
-    static int ctr=0;
-    if (ctr < 10) {
-      output.write("density for recombination to high - adjusting\n");
-      ctr++;
-    };
-    n = 1e21;
-  }
   // use transpose, its ~ 10% faster
   /*const double MATA[9][9]= {
       {-2.855728479302E+01, -7.664042607917E-01, -4.930424003280E-03,

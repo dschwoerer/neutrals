@@ -6,7 +6,11 @@ RadiatedPower * RadiatedPowerFactory::create(Options * options){
   std::string name;
   options->get("RadiationType", name , "updatedradiatedpower");
 
-  if (name == "hydrogenradiatedpower") {
+  if (name == "radiatedpower") {
+    return new RadiatedPower();
+  } else if (name == "hutchinsoncarbonradiation") {
+    return new HutchinsonCarbonRadiation();
+  } else if (name == "hydrogenradiatedpower") {
     return new HydrogenRadiatedPower();
   } else if (name == "updatedradiatedpower") {
     return new UpdatedRadiatedPower();
@@ -15,6 +19,8 @@ RadiatedPower * RadiatedPowerFactory::create(Options * options){
   } else {
     throw BoutException("Cannot handle requested CrossSectionType.\n"
                         "Requested %s - but we only support:\n"
+                        "	* RadiatedPower\n"
+                        "	* HutchinsonCarbonRadiation\n"
                         "	* HydrogenRadiatedPower\n"
                         "	* UpdatedRadiatedPower\n"
                         "	* TestingPower\n",name.c_str());

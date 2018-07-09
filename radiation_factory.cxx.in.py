@@ -2,10 +2,10 @@
 
 
 models=[
-    ## Virtual:
-    # "RadiatedPower",
-    # "InterpRadiatedPower",
-    # "HutchinsonCarbonRadiation",
+    "RadiatedPower",
+    # Needs an argument - file to read
+    #"InterpRadiatedPower",
+    "HutchinsonCarbonRadiation",
     "HydrogenRadiatedPower",
     "UpdatedRadiatedPower",
     ## commented out:

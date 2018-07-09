@@ -5,6 +5,8 @@
 #include "neutrals_diffusion.hxx"
 #include "neutrals_parallel.hxx"
 #include "neutrals_none.hxx"
+#include "bout/constants.hxx"
+#include "unit.hxx"
 
 #include <difops.hxx>
 
@@ -77,20 +79,7 @@ const Field3D &Neutrals::getRecombinationRate() const { return gamma_rec; }
 
 const Field3D &Neutrals::getIonisationRate() const { return gamma_ion; }
 
-/// this code is not staggering aware
-// Field3D Neutrals::getIonMomentumSource() const{
-//   ASSERT2(Ui        != nullptr);
-//   ASSERT2(gamma_CX  != nullptr);
-//   ASSERT2(gamma_rec != nullptr);
-//   return -(*Ui)*((*gamma_CX)+(*gamma_rec));
-// }
-
-// Field3D Neutrals::getElectronMomentumSource() const{
-//   ASSERT2(Ue        != nullptr);
-//   ASSERT2(gamma_rec != nullptr);
-//   return -(*Ue)*((*gamma_rec));
-// }
-
+// Friction term between neutrals and ions
 Field3D Neutrals::getIonVelocitySource() const {
   ASSERT2(Ui != nullptr);
   Field3D tmp = gamma_CX + gamma_ion;
@@ -112,8 +101,24 @@ Field3D Neutrals::getElectronTemperatureSource() const {
   ASSERT2(mu > 0);
   Field3D rec_over_n = gamma_rec / (*n);
   Field3D ion_over_n = gamma_ion / (*n);
-  return rec_over_n * interp_to(SQ(*Ue), Te->getLocation()) / (3. * mu) +
-         (*Te) * (rec_over_n - ion_over_n);
+  Field3D result = rec_over_n * interp_to(SQ(*Ue), Te->getLocation()) / (3. * mu) ;
+  // We do not need this term, as we are asking for a change in temperature.
+  // The particles that go, change the pressure, but also the density
+  // - while keeping the temperature constant.
+  //result += (*Te) * (rec_over_n );
+  // Ionized particles have the temperature of the background gas.
+  // Thus they contribute the temperature difference times the rates
+  // over n (i.e. relative importance)
+  result += ( - (*Te) ) * ion_over_n;
+  // Charge exchange cooles the plasma as well
+  result += ( - (*Te) ) * gamma_CX / (*n);
+
+  result +=
+    - (1.09 * (*Te) - 13.6 * SI::qe / unit->getTemperature()) * rec_over_n
+    - 30 * SI::qe / unit->getTemperature() * ion_over_n
+    ;
+
+  return result ;
 }
 
 Field3D Neutrals::getVorticitySource() const {
@@ -121,15 +126,6 @@ Field3D Neutrals::getVorticitySource() const {
   return -Delp2(*phi) * (gamma_CX + gamma_ion) -
          Grad_perp(*phi) * Grad_perp(gamma_CX + gamma_ion);
 }
-// Field3D Neutrals::
-
-//   virtual Field3D getIonMomentumSource() const;
-//   virtual Field3D getElectronMomentumSource() const;
-//   virtual Field3D getIonVelocitySource() const;
-//   virtual Field3D getElectronVelocitySource() const;
-//   virtual Field3D getDensitySource() const;
-//   virtual Field3D getElectronEnergySource() const;
-//   virtual Field3D getElectronTemperatureSource() const;
 
 std::unique_ptr<Neutrals> NeutralsFactory::create(Solver *solver, Mesh *mesh,
                                                   Options *options) {

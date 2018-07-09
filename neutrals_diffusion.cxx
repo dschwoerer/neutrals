@@ -315,3 +315,31 @@ Field3D DiffusionNeutrals::recycle(const FieldPerp &flux) {
   // limit_at_least(result,1e-30,true);
   return result;
 }
+
+Field3D DiffusionNeutrals::getElectronTemperatureSource() const {
+  ASSERT2(Ue != nullptr);
+  ASSERT2(Te != nullptr);
+  ASSERT2(mu > 0);
+  Field3D rec_over_n = gamma_rec / (*n);
+  Field3D ion_over_n = gamma_ion / (*n);
+  Field3D result = rec_over_n * interp_to(SQ(*Ue), Te->getLocation()) / (3. * mu) ;
+  // We do not need this term, as we are asking for a change in temperature.
+  // The particles that go, change the pressure, but also the density
+  // - while keeping the temperature constant.
+  //result += (*Te) * (rec_over_n );
+  // Ionized particles have the temperature of the background gas.
+  // Thus they contribute the temperature difference times the rates
+  // over n (i.e. relative importance)
+  result += (T_n - (*Te) ) * ion_over_n;
+  // Charge exchange cooles the plasma as well
+  result += (T_n - (*Te) ) * gamma_CX / (*n);
+  // Radiation terms
+  // Based on Ben's SD1D model
+
+  result +=
+    - (1.09 * (*Te) - 13.6 * SI::qe / unit->getTemperature()) * rec_over_n
+    - 30 * SI::qe / unit->getTemperature() * ion_over_n
+    ;
+
+  return result ;
+}

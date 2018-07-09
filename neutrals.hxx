@@ -8,32 +8,124 @@
  */
 
 #pragma once
-//#include <bout/solver.hxx>
-//#include "unit.hxx"
+
 #include <string>
 #include <bout_types.hxx>
 #include <field3d.hxx>
+
 class Solver;
 class Mesh;
 class Datafile;
 class Unit;
 class CrossSection;
 class Options;
-
+/// The Neutrals class
+///
+/// Allow to enable or switch between neutral models without changing
+/// the rest of physics module code significantly.
+///
+/// Typical usage requrires to include the neutrals header file:
+///
+///    #include "neutrals/neutrals.hxx"
+///    #include "neutrals/unit.hxx"
+///
+/// NB: The second include is currently required, as there is not yet
+/// a parser to construct the unit section from BOUT.inp. This will
+/// hopefully soon be fixed. See issue #2
+///
+/// Further the neutrals object needs to be stored - the easiest way
+/// is to have the pointer be part of the physics class:
+///
+///    std::unique_ptr<Neutrals> neutrals;
+///
+/// During initialisation of the Neutrals need to be created. The
+/// constructor expects a pointer to the solver, the mesh, and ether
+/// the absolute name of the section from the input file where the
+/// options for the neutrals are, or a pointer to that section:
+///
+///     neutrals = NeutralsFactory::create(solver,mesh,"neutrals");
+///
+/// After that the unit still needs to be set - see issue #2
+///
+///     BohmUnit * unit = new BohmUnit(B_0,T_e0/e,n_0,m_i/u);
+///
+/// Further the neutrals need to have certain information about the
+/// plasma. What exactly is needed depends on the neutrals
+/// model. Further, the staggered quantites are only needed if the
+/// velocities are staggered.
+///
+///     neutrals->setPlasmaDensity(n);
+///     neutrals->setIonTemperature(T);
+///     neutrals->setElectronTemperature(T);
+///     neutrals->setPotential(phi);
+///     neutrals->setIonVelocity(U);
+///     neutrals->setElectronVelocity(V);
+///     neutrals->setPlasmaDensityStag(n_stag);
+///
+/// After setting the needed a call to init is required, to finalize
+/// the initalisation.
+///
+///     neutrals->init()
+///
+/// If the neutrals are used during initialisation, e.g. to calculate
+/// the potential, the neutrals need to be updated before any
+/// quantities of the neutrals can be used. Otherwise it is sufficient
+/// to call update in the rhs, after all the fields are valid, and
+/// before any quantites from the neutrals are used.
+/// After that, the neutrals can be used in the equations of the
+/// system, e.g.:
+///
+///     ddt(vort) += neutrals->getVorticitySource();
+///     ddt(n) = - bracket(phi, n, bm, CELL_CENTRE)
+///              + neutrals->getDensitySource()
+///              .... ;
+///
+/// Then the neutrals can be configured, using the BOUT++ input file.
+/// The section for the neutrals must have the name passed to the
+/// factory during the creation of the neutrals object. Thus it is
+/// possible to have different section for e.g. different neutrals
+/// models, and switch between them.
+/// The section can look like this:
+///
+///     // BOUT.inp section
+///     [neutrals]
+///     type=parallel
+///     use_log_n = true
+///     momentum_name = m_n
+///
+/// For a list of the possible options see the specific models.
+/// The fields evolved by the neutrals are reading the boundary
+/// conditions etc from the input file. They can be specified as for
+/// any other field:
+///
+///     [neutral_density]
+///     function = -10
+///     bndry_all = neumann_o2(0)
+///
+///     [m_n]
+///     bndry_all             = neumann_o2(0)
+///     bndry_yup             = dirichlet_o4(0)
+///
 class Neutrals {
 public:
-  Neutrals(Solver *solver, Mesh *mesh, CrossSection * cs, Options * options);
-  /// what fields are needed may depend on the neutral model used
+  /// Provide the plasma density
   virtual void setPlasmaDensity(const Field3D &n);
+  /// Provide the staggered plasma density
   virtual void setPlasmaDensityStag(const Field3D &n_stag);
+  /// Provide the electron temperature
   virtual void setElectronTemperature(const Field3D &Te);
+  /// Provide the electron temperature. If this is not set, the
+  /// electron temperature is assumed.
   virtual void setIonTemperature(const Field3D &Ti);
+  /// Provide the parallel electron velocity
   virtual void setElectronVelocity(const Field3D &U);
+  /// Provide the parallel ion velocity
   virtual void setIonVelocity(const Field3D &U);
+  /// Provide the potential
   virtual void setPotential(const Field3D &phi);
   /// Set the unit system
   virtual void setUnit(const Unit &unit);
-  /// scale the extra neutral sources
+  /// scale the extra neutral sources - useful for PID controller
   virtual void scaleSource(BoutReal fac);
   /// Init everything
   virtual void init() {};
@@ -45,46 +137,9 @@ public:
   /// e.g. setting the time derivative of the needed neutral
   /// variables.
   virtual void update() = 0;
-  /// return the information about neutrals, needed by the plasma code
-  /// maybe rather provide getter for momenta & velocities and
-  /// densities for electrons and ions?
-  /// Might be easier for the user and also provide a more general
-  /// interface ...
-  /// Derived classes might miss to override all routines, which is
-  /// most likely needed, if any is overwritten ...
-  virtual const Field3D &getCXRate() const;
-  virtual const Field3D &getRecombinationRate() const;
-  virtual const Field3D &getIonisationRate() const;
-
-  // virtual Field3D getCXOverN() const {
-  //   ASSERT2(gamma_CX != nullptr);
-  //   if (gamma_CX_over_n == nullptr){
-  //     return *gamma_CX/ *n;
-  //   } else {
-  //     return * gamma_CX_over_n;
-  //   }
-  // }
-  // virtual Field3D getRecOverN() const {
-  //   ASSERT2(gamma_rec != nullptr);
-  //   if (gamma_rec_over_n == nullptr){
-  //     return *gamma_rec/ *n;
-  //   } else {
-  //     return * gamma_rec_over_n;
-  //   }
-  // }
-  // virtual Field3D getIonOverN() const {
-  //   ASSERT2(gamma_ion != nullptr);
-  //   if (gamma_ion_over_n == nullptr){
-  //     return *gamma_ion/ *n;
-  //   } else {
-  //     return * gamma_ion_over_n;
-  //   }
-  // }
-
   /// Source terms (if these terms are actually sinks, the will have a
   /// negative sign)
-  // virtual Field3D getIonMomentumSource() const;
-  // virtual Field3D getElectronMomentumSource() const;
+  /// 
   virtual Field3D getIonVelocitySource() const;
   virtual Field3D getElectronVelocitySource() const;
   virtual Field3D getDensitySource() const;
@@ -98,6 +153,7 @@ public:
 
   virtual ~Neutrals();
 protected:
+  Neutrals(Solver *solver, Mesh *mesh, CrossSection * cs, Options * options);
   void updateMore();
   bool dump_more;
   const Field3D *n;   ///< density

@@ -12,15 +12,25 @@ class RadiatedPower {
 public:
   const Field3D power(const Field3D &Te, const Field3D &Ne, const Field3D &Ni);
 
-  virtual BoutReal power(BoutReal Te, BoutReal ne, BoutReal ni) = 0;
+  virtual BoutReal power(BoutReal Te, BoutReal ne, BoutReal ni) {
+    throw BoutException("power not implemented!");
+  }
 
-  virtual BoutReal ionisation(BoutReal Te) = 0;
+  virtual BoutReal ionisation(BoutReal Te) {
+    throw BoutException("ionisation not implemented!");
+  }
 
-  virtual BoutReal recombination(BoutReal n, BoutReal Te) = 0;
+  virtual BoutReal recombination(BoutReal n, BoutReal Te) {
+    throw BoutException("recombination not implemented!");
+  }
 
-  virtual BoutReal chargeExchange(BoutReal Te) = 0;
+  virtual BoutReal chargeExchange(BoutReal Te) {
+    throw BoutException("chargeExchange not implemented!");
+  }
 
-  virtual BoutReal excitation(BoutReal Te) = 0;
+  virtual BoutReal excitation(BoutReal Te) {
+    throw BoutException("excitation not implemented!");
+  }
 
 private:
 };
