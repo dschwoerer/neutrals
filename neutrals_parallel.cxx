@@ -49,46 +49,66 @@ void ParallelNeutrals::evolve() {
     }
   }
   CELL_LOC mylow = Ui->getLocation();
-  //ASSERT1(mylow==CELL_YLOW);
   //nnsheath_yup();
   //mnsheath_yup();
   //nnsheath_ydown();
-  //[-0.0625  0.5625  0.5625 -0.0625]
-  // [-1.,  9.,  9., -1.] / 16
-  //[ 0.3125  0.9375 -0.3125  0.0625]
-  //n_sheath=sliceXZ(*n_stag, mesh->yend + 1);
-  auto n_sheath=(-sliceXZ(*n, mesh->yend -1)+9*sliceXZ(*n, mesh->yend )+9*sliceXZ(*n, mesh->yend + 1)-sliceXZ(*n, mesh->yend + 2))/16.;
-  FieldPerp flux = sliceXZ(*Ui, mesh->yend + 1) * n_sheath;
-  //printf("\t%g\n",n_sheath(mesh->xstart,0));//(*n_stag)(mesh->xstart,mesh->yend+1,0));
+  // Works only for aiolos mesh, but this does the correct interpolation
+  FieldPerp n_sheath, u_sheath;
+  if (n_stag) {
+    n_sheath=sliceXZ(*n_stag, mesh->yend + 1);
+    u_sheath=sliceXZ(*Ui, mesh->yend + 1);
+  } else {
+    // fallback for bout mesh - only works for uniform meshes
+    n_sheath=(-sliceXZ(*n, mesh->yend -1)+9*sliceXZ(*n, mesh->yend )+9*sliceXZ(*n, mesh->yend + 1)-sliceXZ(*n, mesh->yend + 2))/16.;
+    throw BoutException("Not implemented");
+    u_sheath=nan("");
+  }
+  FieldPerp flux = u_sheath * n_sheath;
   S_recyc = recycle(flux);
-  calcDiffusion();
+  
   if (use_log_n) {
     n_n=exp(l_n_n);
   }
+  calcDiffusion();
   // checkData(n_n,RGN_ALL);
-  ddt(n_n) = (
-              - Div_par(m_n, CELL_CENTRE)
-              + gamma_rec - gamma_ion + S_recyc
-              //+ 100*D2DY2(n_n)
-              + D_neutrals * Laplace(n_n)
-              -n_n * loss_fraction
-              + S_extra
-              );
+  //Field3D D_stag = interp_to(D_neutrals,CELL_YLOW);
   if (use_log_n) {
-    ddt(l_n_n) = ddt(n_n)/n_n;
+    auto tmp = D_neutrals * DDY(n_n);
+    mesh->communicate(tmp);
+    tmp.applyBoundary("dirichlet_o4(0)");
+    ddt(l_n_n) = (
+		  - Div_par(m_n, CELL_CENTRE)
+		  + gamma_rec - gamma_ion + S_recyc
+		  + S_extra
+		  //+ D_neutrals * Laplace(n_n)
+		  //+ DDY(D_neutrals) * DDY(n_n)
+		  //+ DDY(D_stag * DDY(n_n,CELL_YLOW),CELL_CENTRE)
+		  + DDY(tmp)
+		  ) / n_n
+      //+ 100*D2DY2(n_n)
+      - loss_fraction
+      ;
+  } else {
+      ddt(n_n) = (
+		  //- Div_par(m_n, CELL_CENTRE)
+		  + gamma_rec - gamma_ion + S_recyc
+		  //+ S_extra
+		  //+ 100*D2DY2(n_n)
+		  //+ D_neutrals * Laplace(n_n)
+		  //- n_n * loss_fraction
+		  );
   }
 
   v_n = m_n / interp_to(n_n, mylow);
-  auto tmp = gamma_CX + gamma_ion;
   //ddt(m_n) = 0;
   ddt(m_n) = (
-              - Vpar_Grad_par(v_n, m_n)
-           // - Vpar_Grad_par(m_n, v_n);
+              - Vpar_Grad_par(v_n, m_n, DIFF_U3)
+	      - Vpar_Grad_par(m_n, v_n, DIFF_U3)
               - Grad_par(n_n * T_n, mylow)
               + interp_to(gamma_CX,  mylow) * (*Ui - v_n)
               + interp_to(gamma_rec, mylow) * (*Ui)
               + interp_to(gamma_ion, mylow) * ( - v_n)
-              + 1000 * D2DY2(m_n,CELL_DEFAULT, DIFF_C2)
+              + 100 * D2DY2(m_n,CELL_DEFAULT, DIFF_C2)
               - interp_to(S_recyc, mylow) * v_thermal
              );
   //ddt(m_n) += - 10*D4DY4(m_n);

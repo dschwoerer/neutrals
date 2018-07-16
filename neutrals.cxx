@@ -73,11 +73,12 @@ void Neutrals::setUnit(const Unit &unit_) { unit = &unit_; }
 
 void Neutrals::setPotential(const Field3D &phi_) { phi = &phi_; }
 
-const Field3D &Neutrals::getCXRate() const { return gamma_CX; }
+/*const Field3D &Neutrals::getCXRate() const { return gamma_CX; }
 
 const Field3D &Neutrals::getRecombinationRate() const { return gamma_rec; }
 
 const Field3D &Neutrals::getIonisationRate() const { return gamma_ion; }
+*/
 
 // Friction term between neutrals and ions
 Field3D Neutrals::getIonVelocitySource() const {

@@ -20,6 +20,8 @@ public:
   // Field3D recombination_rate(const BoutReal n, const Field3D &T_e);
   // BoutReal recombination_rate(const BoutReal n, const BoutReal T_e);
 
+  virtual Field3D power( const Field3D &T, const Field3D &n, const Field3D & imp);
+
   // constructor;
   CrossSection(RadiatedPower *atom);
 

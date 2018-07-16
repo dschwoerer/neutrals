@@ -35,6 +35,7 @@ DiffusionNeutrals::DiffusionNeutrals(Solver *solver, Mesh *mesh, CrossSection * 
   OPTION(options, higher_density_limit, 4e19); // in m^-3
   OPTION(options, recycling_fraction, 0.9);   // fraction of target flux that is recycled
   OPTION(options, loss_fraction, 1e-5); // fraction of neutrals that is lost per time
+  OPTION(options, diffusion_factor, 10.); 
   options->get("evolve", doEvolve, true);
   OPTION(options, onlyion, false);
   OPTION(options, use_log_n, false);
@@ -46,11 +47,17 @@ DiffusionNeutrals::DiffusionNeutrals(Solver *solver, Mesh *mesh, CrossSection * 
     std::string function;
     OPTION(extra,function,"0");
     output.write("\tFound extra functions: %s\n",function.c_str());
-    S_extra = FieldFactory::get()->create3D("function",extra,mesh, CELL_CENTRE,0);
+    S_extra = FieldFactory::get()->create3D(function,extra,mesh, CELL_CENTRE,0);
     output.write("\tFunction is in the range [%e,%e]\n",min(S_extra,true),max(S_extra,true));
   }
   S0_extra=S_extra;
 
+  OPTION(options, impurity_fraction, 0);
+  if (impurity_fraction > 0) {
+    std::string impurity_model_name;
+    options->get("impurity_model", impurity_model_name, "hutchinsoncarbonradiation");
+    impurity_model = new CrossSection(RadiatedPowerFactory::create(impurity_model_name));
+  }
   if (equi_rates && doEvolve) {
     throw BoutException(
         "DiffusionNeutrals:: cannot have equilibrium rates with evolving neutrals!");
@@ -70,7 +77,7 @@ DiffusionNeutrals::DiffusionNeutrals(Solver *solver, Mesh *mesh, CrossSection * 
 }
 
 void DiffusionNeutrals::init() {
-    // 300 K in units of 40eV
+  // 300 K in units of 40eV
   std::string temperature_unit;
   OPTION(options,temperature_unit,"kb");
   BoutReal t_unit;
@@ -187,6 +194,7 @@ void DiffusionNeutrals::calcDiffusion() {
       (v_thermal * a0 * (unit->getDensity() * pow(unit->getLength(), 3)));
   Field3D sigma_nn = fac * n_n;
   D_neutrals = SQ(v_thermal) / (sigma_nn + gamma_CX + gamma_ion);
+  D_neutrals *= diffusion_factor;
 }
 
 void DiffusionNeutrals::calcRates() {
@@ -226,6 +234,14 @@ void DiffusionNeutrals::calcRates() {
     gamma_CX_over_n = 0;
     gamma_rec = 0;
     gamma_rec_over_n = 0;
+  }
+  radiation_loss = 0;
+  if (impurity_fraction > 0) {
+    radiation_loss +=
+      impurity_model->power((*Ti) * (unit->getTemperature() / SI::qe),
+			    (*n) * unit->getDensity(),
+			    (*n) * (unit->getDensity() * impurity_fraction)) /
+      (unit->getTemperature() * unit->getDensity() / unit->getTime());
   }
 }
 
@@ -337,9 +353,11 @@ Field3D DiffusionNeutrals::getElectronTemperatureSource() const {
   // Based on Ben's SD1D model
 
   result +=
-    - (1.09 * (*Te) - 13.6 * SI::qe / unit->getTemperature()) * rec_over_n
-    - 30 * SI::qe / unit->getTemperature() * ion_over_n
+    - (1.09 * (*Te) - 13.6 * ( SI::qe / unit->getTemperature() )) * rec_over_n
+    - 30 * ( SI::qe / unit->getTemperature() ) * ion_over_n
     ;
 
+  result -= 2./3. * radiation_loss / (*n);
+  
   return result ;
 }

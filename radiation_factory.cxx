@@ -5,6 +5,9 @@
 RadiatedPower * RadiatedPowerFactory::create(Options * options){
   std::string name;
   options->get("RadiationType", name , "updatedradiatedpower");
+  return create(name, options);
+}
+RadiatedPower * RadiatedPowerFactory::create(const std::string & name, Options * options){
 
   if (name == "radiatedpower") {
     return new RadiatedPower();

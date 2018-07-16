@@ -29,6 +29,15 @@ Field3D CrossSection::recombination_rate(const Field3D &n, const Field3D &T_e) {
   return result;
 }
 
+Field3D CrossSection::power( const Field3D &T, const Field3D &n, const Field3D & imp) {
+  Field3D result;
+  result.allocate();
+  for (auto i: result) {
+    result[i] = atom->power(T[i], n[i], imp[i]);
+  }
+  return result;
+}
+
 // // TODO: only compute for actual domain
 // Field3D CrossSection::recombination_rate(const Field3D &n, const BoutReal T_e) {
 //   Field3D result;

@@ -25,13 +25,13 @@ protected:
   Field3D n_n;
   /// log of neutral density - only set if evolved
   Field3D l_n_n;
-  ///
+  /// Evolve the logarithm of the density, rather then the density
   bool use_log_n;
   /// name of the density
   std::string density_name;
   /// diffusion `constant`
   Field3D D_neutrals;
-  /// recycling flux
+  /// Neutrals source due to recycling
   Field3D S_recyc;
   bool doEvolve;   ///< are we evolving the neutrals?
   bool equi_rates; ///< are we using the steady state rates?
@@ -47,14 +47,21 @@ protected:
   BoutReal lower_density_limit;
   /// to maximum neutral density enforced
   BoutReal higher_density_limit;
+  /// factor to enhance diffusion of neutrals
+  BoutReal diffusion_factor;
   /// routine to update the rates - only to be called if needed
   void calcRates();
+  /// fraction of impurities in the plasma
+  BoutReal impurity_fraction;
+  /// The radiation model for impurities. The default is
+  /// `HutchinsonCarbonRadiation`
+  CrossSection * impurity_model;
+  /// Energy loss due to impurities
+  Field3D radiation_loss;
   /// set the boundaries
   virtual void setBC();
   /// routine to set the time derivative
   virtual void evolve();
-  /// Calculate the diffusion constant
-  void calcDiffusion();
   // /// field containing the CX rates
   // Field3D gamma_CX;
   // /// field containing the recombination rates
@@ -70,8 +77,18 @@ protected:
   /// flux
   virtual Field3D recycle(const FieldPerp &flux);
   void nnsheath_yup();
-  /// neutral Temperature;
+  /// neutral Temperature, this reads further `temperatue_unit` which
+  /// can be any off:
+  /// * `k` or `kB`, for the Boltzmann constant, if the temperature is
+  ///   in Kelvin
+  /// * `eV` if the temperature is in electron volts
+  /// * `default` if the temperature is in the unit given that are
+  ///   used in the main system of equations.
+  /// The temperature is used for the diffusion constant, and for the
+  /// `parralelNeutrals` also for the pressure.
   BoutReal T_n;
   /// thermal velocity;
   BoutReal v_thermal;
+  /// Calculate the diffusion constant
+  void calcDiffusion();
 };
