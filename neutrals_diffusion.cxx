@@ -2,13 +2,13 @@
 
 #include "bout/constants.hxx"
 #include "bout/surfaceiter.hxx"
+#include "field_factory.hxx"
 #include "helper.hxx"
 #include "interpolation.hxx"
 #include "radiation.hxx"
 #include "radiation_factory.hxx"
 #include "unit.hxx"
 #include <bout/solver.hxx>
-#include "field_factory.hxx"
 
 // n_n sheath boundary condition
 void DiffusionNeutrals::nnsheath_yup() {
@@ -58,6 +58,7 @@ DiffusionNeutrals::DiffusionNeutrals(Solver *solver, Mesh *mesh, CrossSection * 
     options->get("impurity_model", impurity_model_name, "hutchinsoncarbonradiation");
     impurity_model = new CrossSection(RadiatedPowerFactory::create(impurity_model_name));
   }
+
   if (equi_rates && doEvolve) {
     throw BoutException(
         "DiffusionNeutrals:: cannot have equilibrium rates with evolving neutrals!");
@@ -102,6 +103,42 @@ void DiffusionNeutrals::init() {
   output_info.write("\tNeutrals temperature: %.10e kB\n",T_n*unit->getTemperature()/SI::kb);
   output_info.write("\tNeutrals thermal velocity: %.10e\n",v_thermal);
   output_info.write("\tNeutrals thermal velocity: %.10e m/s\n",v_thermal*unit->getSpeed());
+
+  recycling_dist = Field2D(0., n->getMesh());
+  if (recycling_falloff) {
+    BoutReal falloff = recycling_falloff / unit->getLength();
+    Field2D intDy = FieldFactory::get()->create2D("realy",nullptr, n->getMesh(), CELL_CENTRE);
+    SurfaceIter s(mesh);
+    Indices i;
+    for (s.first(); !s.isDone(); s.next()) {
+      if (s.closed()) {
+	continue; // Skip if closed flux surface
+      }
+      i.x = s.xpos;
+      int nproc;
+      MPI_Comm comm = s.communicator();
+      MPI_Comm_size(comm, &nproc);
+
+      // Get the position of the target
+      BoutReal L = intDy(i.x, mesh->yend); // Cell centre
+      L += mesh->coordinates()->dy(i.x, mesh->yend)/2;
+      MPI_Bcast(&L, 1,MPI_DOUBLE, nproc -1, comm);
+
+      // Get the non-normalised values
+      BoutReal sum = 0;
+      for (i.y = 0; i.y < mesh->LocalNy; ++i.y) {
+	recycling_dist[i] = exp(-SQ(L-intDy[i])/(2*SQ(falloff)));
+	if (i.y >= mesh->ystart && i.y <= mesh->yend) {
+	  sum+=recycling_dist[i];
+	}
+      }
+      // normalise
+      MPI_Allreduce(MPI_IN_PLACE, &sum, 1, MPI_DOUBLE, MPI_SUM, comm);
+      for (i.y = 0; i.y < mesh->LocalNy; ++i.y) {
+	recycling_dist[i] /= sum *mesh->coordinates()-> dy[i];
+      }
+    } // end iteration
+  } // end if recycling fallof
 }
 
 void DiffusionNeutrals::scaleSource(BoutReal fac) {
@@ -272,47 +309,21 @@ Field3D DiffusionNeutrals::recycle(const FieldPerp &flux) {
     }
     Coordinates *coord = mesh->coordinates();
     if (recycling_falloff) {
-      BoutReal falloff = recycling_falloff / unit->getLength();
       comm = s.communicator();
       MPI_Comm_size(comm, &nproc);
       BoutReal TargetFluxOuter[mesh->LocalNz];
       for (int k = 0; k < mesh->LocalNz; k++) {
-        // if(s.lastY())
         // TargetFluxOuter = Flux(i,mesh->yend+1,k)/mesh->Bxy(i,mesh->yend+1);
         // todo: replace abs with min(,0)?
         TargetFluxOuter[k] = abs(flux(i, k) * recycling_fraction);
-        // if (TargetFluxOuter[k] == 0){throw BoutException("fuuu");}
+	ASSERT2(TargetFluxOuter[k] != 0)
       }
       MPI_Bcast(TargetFluxOuter, mesh->LocalNz, MPI_DOUBLE, nproc - 1, comm);
-      // if(s.firstY())		//On inner target boundary, broadcast target flux
-      // TargetFluxInner = Flux(i,2,k)/mesh->Bxy(i,2);
-      // MPI_Bcast(&TargetFluxInner,1,MPI_DOUBLE,0,comm);
-      // BoutReal sum=0;
-      // BoutReal den;
-      BoutReal tmpsum = 0;
-      for (int j = 2; j < mesh->GlobalNy - 2; j++) {
-        BoutReal L =
-            (mesh->GlobalNy - 4.5 - mesh->YGLOBAL(j)) * coord->dy(i, j) *
-            sqrt(coord->g_22(i, j)); // Make zero point between guard cell and first cell
-        // printf("%d %g  ",mesh->YGLOBAL(j),L);
-        tmpsum += (2 / (falloff * sqrt(TWOPI))) * exp(-SQ(L) / (2 * SQ(falloff))) *
-                  coord->dy(i, j);
-      }
       // printf("%d %g\n",mesh->GlobalNy,tmpsum);
       for (int j = 0; j < mesh->LocalNy; j++) {
-        // TODO: BUG: L_para should not depend on j?
-        // BoutReal L_para=(mesh->GlobalNy-4)*coord->dy(i,j)*sqrt(coord->g_22(i,j));
-        BoutReal L =
-            (mesh->GlobalNy - 4.5 - mesh->YGLOBAL(j)) * coord->dy(i, j) *
-            sqrt(coord->g_22(i, j)); // Make zero point between guard cell and first cell
-        // TODO: replace abs(?) with min(?,0)?
-        // BoutReal tmp=1/falloff*exp(-L/falloff)/(1-exp(-L_para/falloff));
-        BoutReal tmp = (2 / (falloff * sqrt(TWOPI))) * exp(-SQ(L) / (2 * SQ(falloff)));
-        tmp /= tmpsum;
-        // if(tmp == 0){throw BoutException("maeh");}
         for (int k = 0; k < mesh->LocalNz; k++) {
           // if(TargetFluxOuter[k] == 0){throw BoutException("maeh");}
-          result(i, j, k) = tmp * TargetFluxOuter[k];
+          result(i, j, k) = recycling_dist(i,j) * TargetFluxOuter[k];
         }
       }
     } else {
