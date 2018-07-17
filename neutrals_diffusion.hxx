@@ -10,7 +10,7 @@
 
 class DiffusionNeutrals : public Neutrals {
 public:
-  DiffusionNeutrals(Solver *solver, Mesh *mesh, CrossSection * cs, Options *options);
+  DiffusionNeutrals(Solver *solver, Mesh *mesh, CrossSection *cs, Options *options);
   /// update the rates, and also set the time derivative, assuming it
   /// is using the solver to evolve the neutrals. The EIRENE coupling
   /// might rather use monitors.
@@ -20,6 +20,7 @@ public:
   virtual void scaleSource(const BoutReal) override;
   virtual void init() override;
   virtual Field3D getElectronTemperatureSource() const override;
+
 protected:
   /// neutral density (that we are evolving)
   Field3D n_n;
@@ -55,7 +56,7 @@ protected:
   BoutReal impurity_fraction;
   /// The radiation model for impurities. The default is
   /// `HutchinsonCarbonRadiation`
-  CrossSection * impurity_model;
+  CrossSection *impurity_model;
   /// Energy loss due to impurities
   Field3D radiation_loss;
   /// set the boundaries
@@ -91,4 +92,6 @@ protected:
   BoutReal v_thermal;
   /// Calculate the diffusion constant
   void calcDiffusion();
+  //
+  Field2D recycling_dist;
 };

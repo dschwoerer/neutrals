@@ -1,8 +1,8 @@
 #include <bout/physicsmodel.hxx>
 
-#include "unit.hxx"
 #include "neutrals.hxx"
 #include "neutrals_diffusion.hxx"
+#include "unit.hxx"
 
 class MonitorExample : public PhysicsModel {
 protected:
@@ -38,10 +38,9 @@ protected:
     output.write("\nTimestep monitor, time = %e, dt = %e\n", simtime, dt);
     return 0;
   }
+
 public:
-  ~MonitorExample() {
-    delete unit;
-  }
+  ~MonitorExample() { delete unit; }
 
 private:
   Field3D f;

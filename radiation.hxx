@@ -125,8 +125,8 @@ protected:
 
 class TestingPower : public RadiatedPower {
 public:
-  TestingPower(Options * opt);
-  BoutReal power(BoutReal Te, BoutReal ne, BoutReal ni) ;
+  TestingPower(Options *opt);
+  BoutReal power(BoutReal Te, BoutReal ne, BoutReal ni);
 
   BoutReal ionisation(BoutReal Te);
 
@@ -135,6 +135,7 @@ public:
   BoutReal chargeExchange(BoutReal Te);
 
   BoutReal excitation(BoutReal Te);
+
 private:
   BoutReal _power;
   BoutReal _ionisation;
@@ -142,6 +143,5 @@ private:
   BoutReal _chargeExchange;
   BoutReal _excitation;
 };
-
 
 #endif // __RADIATION_H__

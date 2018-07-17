@@ -9,9 +9,9 @@
 
 #pragma once
 
-#include <string>
 #include <bout_types.hxx>
 #include <field3d.hxx>
+#include <string>
 
 class Solver;
 class Mesh;
@@ -128,18 +128,18 @@ public:
   /// scale the extra neutral sources - useful for PID controller
   virtual void scaleSource(BoutReal fac);
   /// Init everything
-  virtual void init() {};
+  virtual void init(){};
   /// dump infos
   virtual void dumpRates(Datafile &dump);
   /// dump more infos
-  virtual void dumpMore(Datafile & dump);
+  virtual void dumpMore(Datafile &dump);
   /// Update rates. If needed, this also evolves the neutrals by
   /// e.g. setting the time derivative of the needed neutral
   /// variables.
   virtual void update() = 0;
   /// Source terms (if these terms are actually sinks, the will have a
   /// negative sign)
-  /// 
+  ///
   virtual Field3D getIonVelocitySource() const;
   virtual Field3D getElectronVelocitySource() const;
   virtual Field3D getDensitySource() const;
@@ -147,32 +147,33 @@ public:
   virtual Field3D getVorticitySource() const;
   virtual Field3D getElectronTemperatureSource() const;
 
-  virtual const CrossSection * getCrossSection() const;
+  virtual const CrossSection *getCrossSection() const;
 
   std::string type;
 
   virtual ~Neutrals();
+
 protected:
-  Neutrals(Solver *solver, Mesh *mesh, CrossSection * cs, Options * options);
+  Neutrals(Solver *solver, Mesh *mesh, CrossSection *cs, Options *options);
   void updateMore();
   bool dump_more;
-  const Field3D *n;   ///< density
+  const Field3D *n;      ///< density
   const Field3D *n_stag; ///< density staggered
-  const Field3D *Te;  ///< Electron temperature
-  const Field3D *Ti;  ///< Ion Temperature
-  const Field3D *Ui;  ///< Ion velocity
-  const Field3D *Ue;  ///< Electron velocity
-  const Field3D *phi; ///< Electrostatic potential
-  Field3D gamma_CX;   ///< charge exchange rate
-  Field3D gamma_ion;  ///< ionisation rate
-  Field3D gamma_rec;  ///< recombination rate
-  Field3D * ionVelocitySource, * densitySource, * electronTemperatureSource;
+  const Field3D *Te;     ///< Electron temperature
+  const Field3D *Ti;     ///< Ion Temperature
+  const Field3D *Ui;     ///< Ion velocity
+  const Field3D *Ue;     ///< Electron velocity
+  const Field3D *phi;    ///< Electrostatic potential
+  Field3D gamma_CX;      ///< charge exchange rate
+  Field3D gamma_ion;     ///< ionisation rate
+  Field3D gamma_rec;     ///< recombination rate
+  Field3D *ionVelocitySource, *densitySource, *electronTemperatureSource;
   const Unit *unit;
   BoutReal mu;
   Mesh *mesh;
   Solver *solver;
-  CrossSection * hydrogen;
-  Options * options;
+  CrossSection *hydrogen;
+  Options *options;
 };
 
 class NeutralsFactory {
