@@ -1,5 +1,5 @@
 
-BOUT_TOP	= ../..
+BOUT_TOP ?= ../..
 
 SOURCEH	= neutrals.hxx neutrals_diffusion.hxx
 SOURCEC	= neutrals.cxx neutrals_diffusion.cxx cross_section.cxx \
