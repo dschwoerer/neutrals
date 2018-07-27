@@ -20,10 +20,12 @@ ParallelNeutrals::ParallelNeutrals(Solver *solver, Mesh *mesh, CrossSection *cs,
 void ParallelNeutrals::setNeutrals(const Field3D &n_n_, const Field3D &m_n_) {
   if (use_log_n) {
     l_n_n = n_n_;
+    n_n=exp(l_n_n);
   } else {
     n_n = n_n_;
   }
   m_n = m_n_;
+  v_n = m_n / interp_to(n_n, m_n.getLocation());
 }
 
 void ParallelNeutrals::setBC() {

@@ -148,9 +148,11 @@ void DiffusionNeutrals::init() {
 void DiffusionNeutrals::scaleSource(BoutReal fac) { S_extra = S0_extra * (fac + 1); }
 
 void DiffusionNeutrals::setNeutrals(const Field3D &n_n_) {
-  n_n = n_n_;
   if (use_log_n) {
-    l_n_n = log(n_n);
+    l_n_n = n_n_;
+    n_n=exp(l_n_n);
+  } else {
+    n_n = n_n_;
   }
 }
 
