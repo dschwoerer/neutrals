@@ -74,8 +74,6 @@ DiffusionNeutrals::DiffusionNeutrals(Solver *solver, Mesh *mesh, CrossSection *c
     } else {
       solver->add(n_n, density_name.c_str());
     }
-  } else {
-    throw BoutException("we really should get the density!");
   }
 }
 
