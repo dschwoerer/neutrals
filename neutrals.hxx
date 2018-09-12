@@ -128,7 +128,7 @@ public:
   /// scale the extra neutral sources - useful for PID controller
   virtual void scaleSource(BoutReal fac);
   /// Init everything
-  virtual void init(){};
+  virtual void init();
   /// dump infos
   virtual void dumpRates(Datafile &dump);
   /// dump more infos
@@ -174,6 +174,7 @@ protected:
   Solver *solver;
   CrossSection *hydrogen;
   Options *options;
+  BoutReal vort_source_fac; ///< Scale the vorticity source by a factor.
 };
 
 class NeutralsFactory {

@@ -21,6 +21,10 @@ Neutrals::Neutrals(Solver *solver, Mesh *mesh, CrossSection *cs, Options *option
                "**********************************\n");
 }
 
+void Neutrals::init() {
+  OPTION(options, vort_source_fac, 1.0);
+}
+
 Neutrals::~Neutrals() { delete hydrogen; };
 
 void Neutrals::setPlasmaDensity(const Field3D &n_) { n = &n_; }
@@ -115,8 +119,12 @@ Field3D Neutrals::getElectronTemperatureSource() const {
 
 Field3D Neutrals::getVorticitySource() const {
   ASSERT2(phi != nullptr);
-  return -Delp2(*phi) * (gamma_CX + gamma_ion) -
-         Grad_perp(*phi) * Grad_perp(gamma_CX + gamma_ion);
+  auto tmp = -Delp2(*phi) * (gamma_CX + gamma_ion) -
+    Grad_perp(*phi) * Grad_perp(gamma_CX + gamma_ion);
+  if (vort_source_fac != 1.) {
+    tmp *= vort_source_fac;
+  }
+  return tmp;
 }
 
 std::unique_ptr<Neutrals> NeutralsFactory::create(Solver *solver, Mesh *mesh,
