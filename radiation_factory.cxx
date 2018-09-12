@@ -1,12 +1,13 @@
 #include "radiation_factory.hxx"
 #include "radiation.hxx"
 
-RadiatedPower *RadiatedPowerFactory::create(Options *options) {
+
+RadiatedPower * RadiatedPowerFactory::create(Options * options){
   std::string name;
   options->get("RadiationType", name, "updatedradiatedpower");
   return create(name, options);
 }
-RadiatedPower *RadiatedPowerFactory::create(const std::string &name, Options *options) {
+RadiatedPower * RadiatedPowerFactory::create(const std::string & name, Options * options){
 
   if (name == "radiatedpower") {
     return new RadiatedPower();
@@ -25,7 +26,6 @@ RadiatedPower *RadiatedPowerFactory::create(const std::string &name, Options *op
                         "	* HutchinsonCarbonRadiation\n"
                         "	* HydrogenRadiatedPower\n"
                         "	* UpdatedRadiatedPower\n"
-                        "	* TestingPower\n",
-                        name.c_str());
+                        "	* TestingPower\n",name.c_str());
   }
 }
