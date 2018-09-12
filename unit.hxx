@@ -26,9 +26,7 @@ public:
 
 class BohmUnit : public Unit {
 public:
-  BohmUnit(BoutReal B, BoutReal T, BoutReal n, int m_i) : B(B), T(T), n(n), m_i(m_i) {
-    printf("\tBohmUnit: %g %g %g %d\n", B, T, n, m_i);
-  };
+  BohmUnit(BoutReal B, BoutReal T, BoutReal n, int m_i) : B(B), T(T), n(n), m_i(m_i) {};
   BoutReal getDensity() const { return n; };
   BoutReal getSpeed() const { return sqrt(T * SI::qe / (m_i * SI::Mp)); };
   BoutReal getLength() const { return getSpeed() * getTime(); };
