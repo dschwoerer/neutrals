@@ -1,4 +1,3 @@
-
 #include <boutexception.hxx>
 #include <globals.hxx> // for mesh object
 #include <output.hxx>
@@ -401,15 +400,17 @@ BoutReal UpdatedRadiatedPower::recombination(BoutReal n, BoutReal T) {
 
   double fHAV = exp(suma) * 1.0E-6 / (1.0 + 0.125 * T);
 
-  const double A = 3.92E-20;
+  //const double A = 3.92E-20;
   // const double B = 3.0E-124 * pow(1.6E-19,-4.5);
   const double B = 1.144409179687500325061682019168e-39;
   const double Ry = 13.60569;
   // const double Ry15 = pow(Ry,1.5);
-  const double Ry15 = 50.18580066442199694165537948720;
+  //const double Ry15 = 50.18580066442199694165537948720;
   const double chi = 0.35;
 
-  double fRAD = A * Ry15 * 1.0 / (sqrt(T) * (Ry + chi * T));
+  const double ARy15 = 1.9672833860453424198e-18;
+
+  double fRAD = ARy15 / (sqrt(T) * (Ry + chi * T));
 
   // double fREC = fHAV + fRAD + B*n*pow(T,-5.0);
   double fREC = fHAV + fRAD + B * n / (T * T * T * T * T);
@@ -464,6 +465,7 @@ BoutReal UpdatedRadiatedPower::chargeExchange(BoutReal T) {
                                 4.76171332457707722191e-07};
 
     double lograte = 0.0;
+    double plogT=1;
     for (int i = 0; i < 9; i++) {
       /*lograte = 0.0;
         for (int j=0;j<=8;j++)
@@ -472,7 +474,8 @@ BoutReal UpdatedRadiatedPower::chargeExchange(BoutReal T) {
         }
         printf("%.20e,\t",lograte);*/
       // pow(log(TT),i);
-      lograte += cxcoeffs[i] * pow(logT, i);
+      lograte += cxcoeffs[i] * plogT;
+      plogT*=logT;
     }
     // throw BoutException("I'm done ...\n");
     // std::cerr << lograte << "\t";
