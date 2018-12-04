@@ -113,33 +113,33 @@ void DiffusionNeutrals::init() {
     Field2D intDy =
         FieldFactory::get()->create2D("realy", nullptr, n->getMesh(), CELL_CENTRE);
     SurfaceIter s(mesh);
-    Indices i;
+    //Indices i;
     for (s.first(); !s.isDone(); s.next()) {
       if (s.closed()) {
         continue; // Skip if closed flux surface
       }
-      i.x = s.xpos;
+      int x = s.xpos;
       int nproc;
       MPI_Comm comm = s.communicator();
       MPI_Comm_size(comm, &nproc);
 
       // Get the position of the target
-      BoutReal L = intDy(i.x, mesh->yend); // Cell centre
-      L += mesh->coordinates()->dy(i.x, mesh->yend) / 2;
+      BoutReal L = intDy(x, mesh->yend); // Cell centre
+      L += mesh->getCoordinates()->dy(x, mesh->yend) / 2;
       MPI_Bcast(&L, 1, MPI_DOUBLE, nproc - 1, comm);
 
       // Get the non-normalised values
       BoutReal sum = 0;
-      for (i.y = 0; i.y < mesh->LocalNy; ++i.y) {
-        recycling_dist[i] = exp(-SQ(L - intDy[i]) / (2 * SQ(falloff)));
-        if (i.y >= mesh->ystart && i.y <= mesh->yend) {
-          sum += recycling_dist[i];
+      for (int y = 0; y < mesh->LocalNy; ++y) {
+        recycling_dist(x,y) = exp(-SQ(L - intDy(x,y)) / (2 * SQ(falloff)));
+        if (y >= mesh->ystart && y <= mesh->yend) {
+          sum += recycling_dist(x,y);
         }
       }
       // normalise
       MPI_Allreduce(MPI_IN_PLACE, &sum, 1, MPI_DOUBLE, MPI_SUM, comm);
-      for (i.y = 0; i.y < mesh->LocalNy; ++i.y) {
-        recycling_dist[i] /= sum * mesh->coordinates()->dy[i];
+      for (int y = 0; y < mesh->LocalNy; ++y) {
+        recycling_dist(x,y) /= sum * mesh->getCoordinates()->dy(x,y);
       }
     } // end iteration
   }   // end if recycling fallof
@@ -307,7 +307,7 @@ Field3D DiffusionNeutrals::recycle(const FieldPerp &flux) {
       }
       continue; // Skip if closed flux surface
     }
-    Coordinates *coord = mesh->coordinates();
+    Coordinates *coord = mesh->getCoordinates();
     if (recycling_falloff) {
       comm = s.communicator();
       MPI_Comm_size(comm, &nproc);
