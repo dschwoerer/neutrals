@@ -34,6 +34,7 @@ void ParallelNeutrals::setBC() {
   m_n.applyBoundary();
   if (use_log_n) {
     l_n_n.applyBoundary();
+    n_n = exp(l_n_n);
   } else {
     n_n.applyBoundary();
   }
