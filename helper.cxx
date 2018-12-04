@@ -38,7 +38,7 @@ void spread(Field3D f) {
 
 void check_nonneg(Field3D &f) {
   BoutReal k;
-  for (auto i : f) {
+  for (auto i = f.begin(); !i.done(); ++i) {
     if (f[i] <= 0) {
       k = f[i];
       throw BoutException("found neg value (%g) at %d", k, i);
@@ -59,7 +59,7 @@ void limit_at_least_smooth(Field3D &f, BoutReal limit) {
 
 bool limit_at_least(Field3D &f, BoutReal l, bool dothrow) {
   bool changed = false;
-  for (auto i : f) {
+  for (auto i = f.begin(); !i.done(); ++i) {
     if (f[i] < l) {
       f[i] = l;
       changed = true;
@@ -70,7 +70,7 @@ bool limit_at_least(Field3D &f, BoutReal l, bool dothrow) {
 
 bool limit_at_most(Field3D &f, BoutReal l) {
   bool changed = false;
-  for (auto i : f) {
+  for (auto i = f.begin(); !i.done(); ++i) {
     if (f[i] > l) {
       f[i] = l;
       changed = true;
@@ -135,7 +135,7 @@ void set_equilibrium_value(Field3D &f, const char *fname, bool set_default,
     }
   } else if (set_default) {
 #pragma omp parallel
-    for (auto i : f) {
+    for (auto i = f.begin(); !i.done(); ++i) {
       f[i] = def_value;
     }
   }

@@ -9,7 +9,7 @@ Field3D CrossSection::ionisation_rate(const Field3D &T_e) {
   Field3D result;
   result.allocate();
 #pragma omp parallel
-  for (auto i : T_e) {
+  for (auto i = T_e.begin(); !i.done(); ++i) {
     const BoutReal Te = T_e[i];
     result[i] = atom->ionisation(Te);
   }
