@@ -10,8 +10,17 @@ ifdef MODULE_DIR
 SUB_NAME        = neutrals
 TARGET		= sub
 else
-SOURCEC	       += test.cxx
-TARGET		= test
+SOURCEC	       += calc.cxx
+TARGET		= calc
+
+all: rates.pdf
+
+rates.pdf: rates.gpl rates.dat
+	gpl rates.gpl
+	cp rates.pdf /home/dave/Documents/phd/slides/bremen17/graphic/neut_rates.pdf
+
+rates.dat: calc
+	./calc > rates.dat
 endif
 CXXFLAGS = -g
 include $(BOUT_TOP)/make.config
