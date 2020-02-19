@@ -30,3 +30,8 @@ generated=cross_section_factory.cxx
 %xx: %xx.in.py
 	@echo "  Generating $@"
 	python3 $< > $@
+
+doc:
+	./doc.py mem > members.rst
+	./doc.py tree > tree.rst
+	./doc.py def > defaults.rst
