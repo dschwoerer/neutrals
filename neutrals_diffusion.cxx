@@ -236,8 +236,8 @@ void DiffusionNeutrals::calcDiffusion() {
   const BoutReal a0 = PI * SQ(5.29e-11 / unit->getLength()); // normalised
   const BoutReal fac =
       (v_thermal * a0 * (unit->getDensity() * pow(unit->getLength(), 3)));
-  Field3D sigma_nn = fac * n_n;
-  D_neutrals = SQ(v_thermal) / (sigma_nn + gamma_CX + gamma_ion);
+  Field3D sigma_nn = fac * n_n * n_n;
+  D_neutrals = SQ(v_thermal) / (sigma_nn + gamma_CX + gamma_ion) * n_n;
   D_neutrals *= diffusion_factor;
 }
 
