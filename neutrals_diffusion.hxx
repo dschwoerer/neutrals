@@ -36,7 +36,13 @@ protected:
   Field3D S_recyc;
   bool doEvolve;   ///< are we evolving the neutrals?
   bool equi_rates; ///< are we using the steady state rates?
-  bool onlyion;    ///< Do we exclude CX and recombination?
+  /// (deprecated) we exclude CX and recombination?
+  /// replaced by include{ION,REC,CX}, which if also present takes
+  /// precedance.
+  bool onlyion;
+  bool includeION; ///< Do we include ionisation?
+  bool includeREC; ///< Do we include recombination?
+  bool includeCX; ///< Do we include charge exchange?
   bool is_static;  ///< are the neutrals static?
   /// fraction of neutrals that are lost per time unit
   BoutReal loss_fraction;
@@ -44,9 +50,9 @@ protected:
   BoutReal recycling_fraction;
   /// length over which the neutrals are recycled
   BoutReal recycling_falloff;
-  /// to minimum neutral density enforced
+  /// the minimum neutral density enforced
   BoutReal lower_density_limit;
-  /// to maximum neutral density enforced
+  /// the maximum neutral density enforced
   BoutReal higher_density_limit;
   /// factor to enhance diffusion of neutrals
   BoutReal diffusion_factor;

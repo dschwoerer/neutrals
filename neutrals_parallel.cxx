@@ -76,14 +76,16 @@ void ParallelNeutrals::evolve() {
   FieldPerp flux = u_sheath * n_sheath;
   S_recyc = recycle(flux);
 
-  if (use_log_n) {
-    n_n = exp(l_n_n);
-  }
   calcDiffusion();
   // checkData(n_n,RGN_ALL);
   // Field3D D_stag = interp_to(D_neutrals,CELL_YLOW);
   if (use_log_n) {
-    auto tmp = D_neutrals * DDY(n_n);
+    //auto tmp = D_neutrals * DDY(n_n);
+    auto tmp = D_neutrals * Grad(n_n);
+    // if (diffusion_factor != 1) {
+    //   tmp.x /= diffusion_factor;
+    //   tmp.z /= diffusion_factor;
+    // }
     mesh->communicate(tmp);
     tmp.applyBoundary("dirichlet_o4(0)");
     ddt(l_n_n) = (-Div_par(m_n, CELL_CENTRE) + gamma_rec - gamma_ion + S_recyc +
@@ -91,18 +93,22 @@ void ParallelNeutrals::evolve() {
                   //+ D_neutrals * Laplace(n_n)
                   //+ DDY(D_neutrals) * DDY(n_n)
                   //+ DDY(D_stag * DDY(n_n,CELL_YLOW),CELL_CENTRE)
-                  + DDY(tmp)) /
+                  + Div(tmp)) /
                      n_n
                  //+ 100*D2DY2(n_n)
                  - loss_fraction;
   } else {
+    auto tmp = D_neutrals * DDY(n_n);
+    mesh->communicate(tmp);
+    tmp.applyBoundary("dirichlet_o4(0)");
     ddt(n_n) = (
-        //- Div_par(m_n, CELL_CENTRE)
+        - Div_par(m_n, CELL_CENTRE)
         +gamma_rec - gamma_ion + S_recyc
-        //+ S_extra
+        + S_extra
         //+ 100*D2DY2(n_n)
         //+ D_neutrals * Laplace(n_n)
-        //- n_n * loss_fraction
+	+ DDY(tmp)
+        - n_n * loss_fraction
     );
   }
 

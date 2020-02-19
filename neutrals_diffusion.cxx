@@ -39,6 +39,10 @@ DiffusionNeutrals::DiffusionNeutrals(Solver *solver, Mesh *mesh, CrossSection *c
   OPTION(options, diffusion_factor, 10.);
   options->get("evolve", doEvolve, true);
   OPTION(options, onlyion, false);
+  OPTION(options, includeION, true);
+  OPTION(options, includeREC, !onlyion);
+  OPTION(options, includeCX, !onlyion);
+  
   OPTION(options, use_log_n, false);
   auto extra = options->getSection("density_source");
 
@@ -174,6 +178,7 @@ void DiffusionNeutrals::update() {
     this->calcRates();
     if (doEvolve) {
       this->evolve();
+      this->setBC();
     }
   }
   updateMore();
@@ -202,19 +207,21 @@ void DiffusionNeutrals::evolve() {
   S_recyc = recycle(flux);
   calcDiffusion();
   limit_at_least_smooth(D_neutrals, 1e2);
-  ddt(n_n) = (+gamma_rec - gamma_ion + S_recyc - n_n * loss_fraction +
-              D_neutrals * Laplace(n_n) + S_extra);
+  ASSERT2(use_log_n);
   if (use_log_n) {
-    ddt(l_n_n) = 1 / n_n * ddt(n_n);
-  }
-
-  // ddt(n_n)  += Grad(D_neutrals) * Grad(n_n);
-  for (int x = 0; x < mesh->LocalNx; ++x) {
-    for (int y = 0; y < mesh->LocalNy; ++y) {
-      if (y == mesh->ystart)
-        y = mesh->yend + 1;
-      for (int z = 0; z < mesh->LocalNz; ++z) {
-        ddt(n_n)(x, y, z) = 0;
+    ddt(l_n_n) = (+gamma_rec - gamma_ion + S_recyc +
+		D_neutrals * Laplace(n_n) + S_extra) / n_n - loss_fraction;
+  } else {
+    ddt(n_n) = (+gamma_rec - gamma_ion + S_recyc - n_n * loss_fraction +
+		D_neutrals * Laplace(n_n) + S_extra);
+    // ddt(n_n)  += Grad(D_neutrals) * Grad(n_n);
+    for (int x = 0; x < mesh->LocalNx; ++x) {
+      for (int y = 0; y < mesh->LocalNy; ++y) {
+	if (y == mesh->ystart)
+	  y = mesh->yend + 1;
+	for (int z = 0; z < mesh->LocalNz; ++z) {
+	  ddt(n_n)(x, y, z) = 0;
+	}
       }
     }
   }
@@ -240,8 +247,16 @@ void DiffusionNeutrals::calcRates() {
   ASSERT2(Te != nullptr);
   ASSERT2(Ui != nullptr);
   if (lower_density_limit > 0) {
-    limit_at_least(n_n, lower_density_limit / unit->getDensity());
-    limit_at_most(n_n, higher_density_limit / unit->getDensity());
+    if (use_log_n) {
+      limit_at_least(l_n_n, log(lower_density_limit / unit->getDensity()));
+      limit_at_most(l_n_n, log(higher_density_limit / unit->getDensity()));
+    } else {
+      limit_at_least(n_n, lower_density_limit / unit->getDensity());
+      limit_at_most(n_n, higher_density_limit / unit->getDensity());
+    }
+  }
+  if (use_log_n) {
+    n_n = exp(l_n_n);
   }
   BoutReal m_i = 2 * SI::Mp;
   Field3D Ti_in_eV = (*Ti) * (unit->getTemperature() / SI::qe);
@@ -251,24 +266,35 @@ void DiffusionNeutrals::calcRates() {
   } else {
     Te_in_eV = (*Te) * (unit->getTemperature() / SI::qe);
   }
-  Field3D nnn0oOmega = n_n * (unit->getDensity() * unit->getTime());
-  gamma_ion_over_n = nnn0oOmega * hydrogen->ionisation_rate(Te_in_eV);
-  gamma_ion = gamma_ion_over_n * (*n);
-  if (!onlyion) {
+  Field3D nnn0oOmega;
+  if (includeCX || includeION){
+    nnn0oOmega = n_n * (unit->getDensity() * unit->getTime());
+  }
+  if (includeION) {
+    gamma_ion_over_n = nnn0oOmega * hydrogen->ionisation_rate(Te_in_eV);
+    gamma_ion = gamma_ion_over_n * (*n);
+  } else {
+    gamma_ion_over_n = 0;
+    gamma_ion = 0;
+  }
+  if (includeCX) {
     Field3D energy = SQ(interp_to(*Ui, CELL_CENTER)) *
                      (m_i / 2 * unit->getSpeed() * unit->getSpeed() / SI::qe); // in eV
     energy += Ti_in_eV;
     gamma_CX_over_n = hydrogen->cx_rate(energy);
     gamma_CX_over_n *= nnn0oOmega;
     gamma_CX = gamma_CX_over_n * (*n);
+  } else {
+    gamma_CX = 0;
+    gamma_CX_over_n = 0;
+  }
 
+  if (includeREC){
     gamma_rec_over_n = (*n) *
                        hydrogen->recombination_rate((*n) * unit->getDensity(), Te_in_eV) *
                        (unit->getDensity() * unit->getTime()); // guard cells not set
     gamma_rec = (*n) * gamma_rec_over_n;
   } else {
-    gamma_CX = 0;
-    gamma_CX_over_n = 0;
     gamma_rec = 0;
     gamma_rec_over_n = 0;
   }
