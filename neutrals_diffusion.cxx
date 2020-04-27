@@ -233,7 +233,7 @@ void DiffusionNeutrals::calcDiffusion() {
   // http://www.wolframalpha.com/input/?i=sqrt%282*%20300+K+*k_B++%2F%282+u%29%29&a=*MC.K+!*k!_B-_*Unit-
   // 1579 thermal speed of deuterium in m/s @ 300 K
   // sqrt(2 * 300 * SI::kb / 2 / SI::u)
-  const BoutReal a0 = PI * SQ(5.29e-11 / unit->getLength()); // normalised
+  const BoutReal a0 = PI * SQ(5.29e-11*2 / unit->getLength()); // normalised
   const BoutReal fac =
       (v_thermal * a0 * (unit->getDensity() * pow(unit->getLength(), 3)));
   Field3D sigma_nn = fac * n_n * n_n;
